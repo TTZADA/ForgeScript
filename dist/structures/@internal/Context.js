@@ -235,6 +235,9 @@ class Context {
     getKeyword(name) {
         return this.#keywords[name];
     }
+    keywords() {
+        return this.#keywords;
+    }
     deleteKeyword(name) {
         return delete this.#keywords[name];
     }
