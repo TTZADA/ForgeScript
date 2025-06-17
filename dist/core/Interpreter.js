@@ -410,13 +410,8 @@ class Interpreter {
 
     // src/utils/stringInterpolation.ts
 
+static async interpolateString(str, ctx, compile) {
 const FUNCTION_PATTERN = /\$([a-zA-Z_][a-zA-Z0-9_]*)\[([^\]]*)\]/g;
-
-export async function interpolateString(
-  str: string,
-  ctx: Context,
-  compiler: Compiler
-): Promise<string> {
   // coleta todos os matches
   const matches = Array.from(str.matchAll(FUNCTION_PATTERN));
   if (matches.length === 0) return str;
@@ -440,7 +435,7 @@ export async function interpolateString(
 
    // substitua todo o corpo de reprocessString por este
 
-static async reprocessString(str: string, ctx: Context) {
+static async reprocessString(str, ctx) {
   // 1) Se for JSON válido, deixe o caminho antigo para objetos
   if (str.trim().startsWith("{") || str.trim().startsWith("[")) {
     try {
@@ -460,8 +455,7 @@ static async reprocessString(str: string, ctx: Context) {
   // 3) Se tiver funções embutidas no meio do texto, interpolar:
   if (this.containsFunctionPatterns(str)) {
     // importa o utilitário que escreveu no passo 1
-    const { interpolateString } = require("../utils/stringInterpolation");
-    return await interpolateString(str, ctx, Compiler_1.Compiler);
+    await this.interpolateString(str, ctx, Compiler_1.Compiler);
   }
 
   // 4) Caso não caia em nenhum dos acima, retorna original
