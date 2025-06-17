@@ -102,6 +102,14 @@ export interface IReprocessingOptions {
      * Whether to handle errors gracefully during reprocessing
      */
     handleErrors?: boolean;
+    /**
+     * Whether to enable full code execution when functions fail
+     */
+    fullExecution?: boolean;
+    /**
+     * List of function names that should trigger full execution on failure
+     */
+    fullExecutionTriggers?: string[];
 }
 
 export interface IReprocessingInfo {
@@ -125,6 +133,32 @@ export interface IReprocessingInfo {
      * Whether the value is an object/array
      */
     isObject: boolean;
+}
+
+/**
+ * Extended context interface for failure recovery
+ */
+export interface IFailureRecoveryContext extends Context {
+    /**
+     * Indicates if this context is being used for failure recovery
+     */
+    isFailureRecovery?: boolean;
+    /**
+     * The function that originally failed
+     */
+    failedFunction?: any;
+    /**
+     * Index of the failed function in the execution array
+     */
+    failedFunctionIndex?: number;
+    /**
+     * Reference to the original context
+     */
+    originalContext?: Context;
+    /**
+     * Indicates if this is a full reprocessing context
+     */
+    isFullReprocessing?: boolean;
 }
 
 export declare class Interpreter {
@@ -171,7 +205,7 @@ export declare class Interpreter {
     private static reprocessValue(value: any, ctx: Context, info: IReprocessingInfo): Promise<any>;
 
     /**
-     * Reprocesses a string that contains $ code
+     * Reprocesses a string that contains $ code - EXECUTES FROM BEGINNING
      * @private
      */
     private static reprocessString(str: string, ctx: Context): Promise<string>;
@@ -189,6 +223,60 @@ export declare class Interpreter {
     private static createTempContext(originalCtx: Context): Context;
 
     /**
+     * Verifies if full execution should be attempted after function failure
+     * @private
+     */
+    private static shouldRetryWithFullExecution(failedValue: any, fn: any, ctx: Context): boolean;
+
+    /**
+     * Checks if a string contains JSON with unresolved functions
+     * @private
+     */
+    private static containsJsonWithFunctions(str: string): boolean;
+
+    /**
+     * Checks if a function typically needs full context to execute properly
+     * @private
+     */
+    private static isFunctionThatNeedsFullContext(fn: any): boolean;
+
+    /**
+     * Executes complete code when a function fails to recover context
+     * @private
+     */
+    private static executeFullCodeForFailedFunction(ctx: Context, failedFunction: any, functionIndex: number): Promise<any>;
+
+    /**
+     * NEW FUNCTION: Executes complete code from the beginning
+     * @private
+     */
+    private static executeFromBeginning(code: string, originalCtx: Context): Promise<string>;
+
+    /**
+     * Executes complete code specifically for failure recovery
+     * @private
+     */
+    private static runFullExecutionForFailure(ctx: IFailureRecoveryContext, compiled: IExtendedCompilationResult): Promise<string | null>;
+
+    /**
+     * Executes complete code like a new Interpreter.run() instance
+     * @private
+     */
+    private static runFullExecution(ctx: Context): Promise<string | null>;
+
+    /**
+     * Attempts to extract specific result for the failed function
+     * @private
+     */
+    private static extractResultForSpecificFunction(fullResult: string, compiled: IExtendedCompilationResult, functionIndex: number, ctx: Context): Promise<string | null>;
+
+    /**
+     * Creates a complete execution context for running from beginning
+     * @private
+     */
+    private static createFullExecutionContext(originalCtx: Context): IFailureRecoveryContext;
+
+    /**
      * Configures the reprocessing behavior of the interpreter
      */
     static configureReprocessing(enabled?: boolean, options?: IReprocessingOptions): void;
@@ -204,6 +292,16 @@ export declare class Interpreter {
     static enableReprocessing(): void;
 
     /**
+     * Configures failure recovery behavior
+     */
+    static configureFailureRecovery(options?: {
+        enabled?: boolean;
+        functionsNeedingContext?: string[];
+        maxRetryAttempts?: number;
+        logRecoveryAttempts?: boolean;
+    }): void;
+
+    /**
      * Static property indicating if reprocessing is enabled
      * @private
      */
@@ -213,5 +311,19 @@ export declare class Interpreter {
      * Static property with reprocessing options
      * @private
      */
-    private static reprocessingOptions: IReprocessingOptions;
+    private static reprocessingOptions: IReprocessingOptions & {
+        fullExecution: boolean;
+        fullExecutionTriggers: string[];
+    };
+
+    /**
+     * Static property with failure recovery configuration
+     * @private
+     */
+    private static failureRecoveryConfig: {
+        enabled: boolean;
+        functionsNeedingContext: string[];
+        maxRetryAttempts: number;
+        logRecoveryAttempts: boolean;
+    };
 }
