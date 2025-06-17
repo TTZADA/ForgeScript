@@ -409,7 +409,7 @@ class Interpreter {
     }
 
     /**
-     * Reprocessa uma string que contém código $ - EXECUTA DESDE O INÍCIO
+     * Reprocessa uma string que contém código $ - PRESERVA CONTEXTO
      */
     static async reprocessString(str, ctx) {
         try {
@@ -424,8 +424,8 @@ class Interpreter {
                 }
             }
 
-            // Execução desde o início - em vez de apenas compilar a string
-            return await this.executeFromBeginning(str, ctx);
+            // Execução preservando contexto - MELHORADO
+            return await this.executeWithPreservedContext(str, ctx);
         }
         catch (error) {
             structures_1.Logger.error('Error reprocessing string:', error);
@@ -434,7 +434,131 @@ class Interpreter {
     }
 
     /**
-     * Executa o código completo desde o início
+     * Executa código preservando completamente o contexto original - NOVA IMPLEMENTAÇÃO
+     */
+    static async executeWithPreservedContext(code, originalCtx) {
+        try {
+            structures_1.Logger.debug('Executing with preserved context:', code);
+            
+            // Compila o código
+            const compiled = Compiler_1.Compiler.compile(code, originalCtx.runtime.path);
+            
+            if (compiled.functions.length === 0) {
+                return code; // Não há funções para executar
+            }
+
+            // CRÍTICO: Usa o contexto original diretamente em vez de criar um novo
+            // Isso preserva todas as variáveis ($let) e dados do contexto pai
+            const preservedCtx = this.createPreservedContext(originalCtx);
+            
+            // Executa com o contexto preservado
+            const result = await this.runWithPreservedContext(preservedCtx, compiled);
+            
+            structures_1.Logger.debug('Preserved context execution result:', result);
+            return result || code;
+        }
+        catch (error) {
+            structures_1.Logger.error('Error in executeWithPreservedContext:', error);
+            return code;
+        }
+    }
+
+    /**
+     * Cria contexto preservado que mantém TODAS as variáveis e dados
+     */
+    static createPreservedContext(originalCtx) {
+        // NOVA ABORDAGEM: Em vez de criar um contexto novo, 
+        // cria uma referência que preserva TUDO do contexto original
+        const preservedCtx = {
+            // Referências diretas aos objetos originais (não cópias)
+            ...originalCtx,
+            
+            // Preserva especificamente as variáveis
+            variables: originalCtx.variables,
+            data: originalCtx.data,
+            
+            // Preserva funções de contexto
+            handleNotSuccess: originalCtx.handleNotSuccess,
+            error: originalCtx.error,
+            
+            // Preserva propriedades do Discord
+            guild: originalCtx.guild,
+            channel: originalCtx.channel,
+            user: originalCtx.user,
+            message: originalCtx.message,
+            client: originalCtx.client,
+            
+            // Preserva runtime mas evita envio duplo
+            runtime: {
+                ...originalCtx.runtime,
+                doNotSend: true
+            },
+            
+            // Preserva container mas evita envio
+            container: {
+                ...originalCtx.container,
+                send: async () => {} // Função vazia
+            },
+            
+            // Marca como reprocessamento preservado
+            isPreservedReprocessing: true,
+            originalContext: originalCtx
+        };
+        
+        return preservedCtx;
+    }
+
+    /**
+     * Executa com contexto preservado
+     */
+    static async runWithPreservedContext(ctx, compiled) {
+        const args = new Array(compiled.functions.length);
+        
+        try {
+            ctx.executionTimestamp = performance.now();
+            
+            // Executa todas as funções preservando o contexto
+            for (let i = 0, len = compiled.functions.length; i < len; i++) {
+                const fn = compiled.functions[i];
+                structures_1.Logger.debug(`Executing preserved function ${i}: ${fn.name}`);
+                
+                const rt = await fn.execute(ctx);
+                
+                let processedValue = (!rt.success && !ctx.handleNotSuccess(fn, rt)) ? ctx["error"]() : rt.value;
+                
+                // Reprocessamento recursivo se necessário, mas sem perder contexto
+                if (rt.success && processedValue != null && this.needsReprocessing(processedValue)) {
+                    processedValue = await this.handleReprocessing(processedValue, ctx, fn);
+                }
+                
+                args[i] = processedValue;
+            }
+            
+            // Resolve o resultado final
+            const content = compiled.resolve(args);
+            
+            // Reprocessamento final se necessário
+            if (content != null && this.needsReprocessing(content)) {
+                return await this.handleReprocessing(content, ctx, null, true);
+            }
+            
+            return content;
+        }
+        catch (err) {
+            if (err instanceof Error) {
+                structures_1.Logger.error('Error in preserved context execution:', err);
+            }
+            else if (err instanceof structures_1.Return) {
+                if (err.return) {
+                    return err.value;
+                }
+            }
+            return null;
+        }
+    }
+
+    /**
+     * Executa o código completo desde o início - VERSÃO LEGADA MANTIDA
      */
     static async executeFromBeginning(code, originalCtx) {
         try {
@@ -545,7 +669,7 @@ class Interpreter {
     }
 
     /**
-     * Cria um contexto completo para execução desde o início
+     * Cria um contexto completo para execução desde o início - VERSÃO LEGADA MANTIDA
      */
     static createFullExecutionContext(originalCtx) {
         // Cria um contexto completamente novo mas baseado no original
@@ -596,7 +720,8 @@ class Interpreter {
             maxDepth: 5,
             logDebug: false,
             handleErrors: true,
-            fullExecution: true, // Nova opção para execução completa
+            fullExecution: true,
+            preserveContext: true, // Nova opção para preservar contexto
             ...options
         };
     }
@@ -621,7 +746,8 @@ class Interpreter {
         maxDepth: 5,
         logDebug: false,
         handleErrors: true,
-        fullExecution: true // Nova opção habilitada por padrão
+        fullExecution: true,
+        preserveContext: true // Nova opção habilitada por padrão
     };
 }
 
