@@ -165,8 +165,8 @@ export declare class Interpreter {
     /**
      * Main execution method for the interpreter
      */
-    static run(ctx: Context): Promise<string | null>;
-    static run(runtime: IRunnable): Promise<string | null>;
+    static run(ctxOrRuntime: Context | IRunnable): Promise<string | null>;
+
 
     /**
      * Handles reprocessing of results that may contain $ code
@@ -269,6 +269,24 @@ export declare class Interpreter {
      * @private
      */
     private static extractResultForSpecificFunction(fullResult: string, compiled: IExtendedCompilationResult, functionIndex: number, ctx: Context): Promise<string | null>;
+
+    
+ /* Executes with fully preserved context (variables, state, etc)
+ * @private
+ */
+private static executeWithPreservedContext(code: string, originalCtx: Context): Promise<string>;
+
+/**
+ * Executes functions using preserved context
+ * @private
+ */
+private static runWithPreservedContext(ctx: Context, compiled: IExtendedCompilationResult): Promise<string | null>;
+
+/**
+ * Creates a preserved context that retains variables and runtime
+ * @private
+ */
+private static createPreservedContext(originalCtx: Context): Context;
 
     /**
      * Creates a complete execution context for running from beginning
