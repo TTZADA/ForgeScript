@@ -77,7 +77,7 @@ class Interpreter {
     /**
      * Manipula o reprocessamento de resultados que podem conter código $
      */
-    private static async handleReprocessing(value, ctx, sourceFunction = null, isFinalContent = false) {
+    static async handleReprocessing(value, ctx, sourceFunction = null, isFinalContent = false) {
         try {
             // Verifica se o valor precisa de reprocessamento
             if (!this.needsReprocessing(value)) {
@@ -108,7 +108,7 @@ class Interpreter {
     /**
      * Verifica se um valor precisa de reprocessamento
      */
-    private static needsReprocessing(value) {
+    static needsReprocessing(value) {
         if (value == null) return false;
         
         // Verifica strings que contenham padrões de função
@@ -127,7 +127,7 @@ class Interpreter {
     /**
      * Verifica se uma string contém padrões de função
      */
-    private static containsFunctionPatterns(str) {
+    static containsFunctionPatterns(str) {
         if (typeof str !== 'string') return false;
         
         // Padrão para detectar funções $funcName[args] ou $funcName
@@ -138,7 +138,7 @@ class Interpreter {
     /**
      * Verifica se um objeto precisa de reprocessamento
      */
-    private static objectNeedsReprocessing(obj) {
+   static objectNeedsReprocessing(obj) {
         if (Array.isArray(obj)) {
             return obj.some(item => this.needsReprocessing(item));
         }
@@ -153,7 +153,7 @@ class Interpreter {
     /**
      * Obtém informações sobre o reprocessamento necessário
      */
-    private static getReprocessingInfo(value, sourceFunction, isFinalContent) {
+   static getReprocessingInfo(value, sourceFunction, isFinalContent) {
         const info = {
             type: 'unknown',
             shouldReprocess: false,
@@ -190,7 +190,7 @@ class Interpreter {
     /**
      * Reprocessa um valor que contém código $
      */
-    private static async reprocessValue(value, ctx, info) {
+  static async reprocessValue(value, ctx, info) {
         if (info.isString) {
             return await this.reprocessString(value, ctx);
         }
@@ -204,7 +204,7 @@ class Interpreter {
     /**
      * Reprocessa uma string que contém código $
      */
-    private static async reprocessString(str, ctx) {
+   static async reprocessString(str, ctx) {
         try {
             // Se é JSON, primeiro parse e depois reprocessa
             if (str.trim().startsWith('{') || str.trim().startsWith('[')) {
@@ -246,7 +246,7 @@ class Interpreter {
     /**
      * Reprocessa um objeto que contém código $
      */
-    private static async reprocessObject(obj, ctx) {
+     static async reprocessObject(obj, ctx) {
         if (Array.isArray(obj)) {
             const results = [];
             for (const item of obj) {
@@ -269,7 +269,7 @@ class Interpreter {
     /**
      * Cria um contexto temporário para reprocessamento
      */
-    private static createTempContext(originalCtx) {
+    static createTempContext(originalCtx) {
         // Cria uma cópia do contexto para reprocessamento
         const tempCtx = Object.create(originalCtx);
         tempCtx.isReprocessing = true;
@@ -305,8 +305,8 @@ class Interpreter {
     }
 
     // Propriedades estáticas para configuração
-    private static reprocessingEnabled = true;
-    private static reprocessingOptions = {
+    static reprocessingEnabled = true;
+    static reprocessingOptions = {
         maxDepth: 5,
         logDebug: false,
         handleErrors: true
