@@ -2,6 +2,7 @@ import { Message, VoiceState, Presence, Role, GuildMember, GuildEmoji, User, Gui
 import { IExtendedCompilationResult } from ".";
 import { Sendable, BaseCommand, Context, Container } from "../structures";
 import { ForgeClient } from "./ForgeClient";
+
 export interface IStates {
     message: Message;
     voiceState: VoiceState;
@@ -24,12 +25,14 @@ export interface IStates {
     sticker: Sticker;
     automodRule: AutoModerationRule;
 }
+
 export type States = {
     [K in keyof IStates]?: {
         old?: IStates[K] | null;
         new?: IStates[K] | null;
     };
 };
+
 export interface IRunnable {
     /**
      * The available discord client
@@ -85,8 +88,130 @@ export interface IRunnable {
      */
     container?: Container;
 }
+
+export interface IReprocessingOptions {
+    /**
+     * Maximum depth for recursive reprocessing
+     */
+    maxDepth?: number;
+    /**
+     * Whether to log debug information during reprocessing
+     */
+    logDebug?: boolean;
+    /**
+     * Whether to handle errors gracefully during reprocessing
+     */
+    handleErrors?: boolean;
+}
+
+export interface IReprocessingInfo {
+    /**
+     * Type of value being reprocessed
+     */
+    type: 'string' | 'json-string' | 'array' | 'object' | 'unknown';
+    /**
+     * Whether the value should be reprocessed
+     */
+    shouldReprocess: boolean;
+    /**
+     * Whether the value is JSON
+     */
+    isJson: boolean;
+    /**
+     * Whether the value is a string
+     */
+    isString: boolean;
+    /**
+     * Whether the value is an object/array
+     */
+    isObject: boolean;
+}
+
 export declare class Interpreter {
+    /**
+     * Main execution method for the interpreter
+     */
     static run(ctx: Context): Promise<string | null>;
     static run(runtime: IRunnable): Promise<string | null>;
+
+    /**
+     * Handles reprocessing of results that may contain $ code
+     * @private
+     */
+    private static handleReprocessing(value: any, ctx: Context, sourceFunction?: any, isFinalContent?: boolean): Promise<any>;
+
+    /**
+     * Checks if a value needs reprocessing
+     * @private
+     */
+    private static needsReprocessing(value: any): boolean;
+
+    /**
+     * Checks if a string contains function patterns
+     * @private
+     */
+    private static containsFunctionPatterns(str: string): boolean;
+
+    /**
+     * Checks if an object needs reprocessing
+     * @private
+     */
+    private static objectNeedsReprocessing(obj: any): boolean;
+
+    /**
+     * Gets information about the required reprocessing
+     * @private
+     */
+    private static getReprocessingInfo(value: any, sourceFunction?: any, isFinalContent?: boolean): IReprocessingInfo;
+
+    /**
+     * Reprocesses a value that contains $ code
+     * @private
+     */
+    private static reprocessValue(value: any, ctx: Context, info: IReprocessingInfo): Promise<any>;
+
+    /**
+     * Reprocesses a string that contains $ code
+     * @private
+     */
+    private static reprocessString(str: string, ctx: Context): Promise<string>;
+
+    /**
+     * Reprocesses an object that contains $ code
+     * @private
+     */
+    private static reprocessObject(obj: any, ctx: Context): Promise<any>;
+
+    /**
+     * Creates a temporary context for reprocessing
+     * @private
+     */
+    private static createTempContext(originalCtx: Context): Context;
+
+    /**
+     * Configures the reprocessing behavior of the interpreter
+     */
+    static configureReprocessing(enabled?: boolean, options?: IReprocessingOptions): void;
+
+    /**
+     * Temporarily disables reprocessing
+     */
+    static disableReprocessing(): void;
+
+    /**
+     * Enables reprocessing
+     */
+    static enableReprocessing(): void;
+
+    /**
+     * Static property indicating if reprocessing is enabled
+     * @private
+     */
+    private static reprocessingEnabled: boolean;
+
+    /**
+     * Static property with reprocessing options
+     * @private
+     */
+    private static reprocessingOptions: IReprocessingOptions;
 }
-//# sourceMappingURL=Interpreter.d.ts.map
