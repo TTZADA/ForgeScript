@@ -408,30 +408,66 @@ class Interpreter {
         return value;
     }
 
-    /**
-     * Reprocessa uma string que contém código $ - EXECUTA DESDE O INÍCIO
-     */
-    static async reprocessString(str, ctx) {
-        try {
-            // Se é JSON, primeiro parse e depois reprocessa
-            if (str.trim().startsWith('{') || str.trim().startsWith('[')) {
-                try {
-                    const parsed = JSON.parse(str);
-                    const reprocessed = await this.reprocessObject(parsed, ctx);
-                    return JSON.stringify(reprocessed);
-                } catch {
-                    // Se não é JSON válido, trata como string normal
-                }
-            }
+    // src/utils/stringInterpolation.ts
 
-            // Execução desde o início - em vez de apenas compilar a string
-            return await this.executeFromBeginning(str, ctx);
-        }
-        catch (error) {
-            structures_1.Logger.error('Error reprocessing string:', error);
-            return str;
-        }
+const FUNCTION_PATTERN = /\$([a-zA-Z_][a-zA-Z0-9_]*)\[([^\]]*)\]/g;
+
+export async function interpolateString(
+  str: string,
+  ctx: Context,
+  compiler: Compiler
+): Promise<string> {
+  // coleta todos os matches
+  const matches = Array.from(str.matchAll(FUNCTION_PATTERN));
+  if (matches.length === 0) return str;
+
+  let result = str;
+  for (const match of matches) {
+    const [fullMatch, fnName, rawArgs] = match;
+    const fn = compiler.getFunction(fnName);
+    if (!fn) continue;
+
+    const args = rawArgs.split(";"); 
+    const rt = await fn.execute(ctx, args);
+    const value = rt.success ? rt.value : "";
+
+    result = result.replace(fullMatch, value);
+  }
+
+  return result;
+}
+
+
+   // substitua todo o corpo de reprocessString por este
+
+static async reprocessString(str: string, ctx: Context) {
+  // 1) Se for JSON válido, deixe o caminho antigo para objetos
+  if (str.trim().startsWith("{") || str.trim().startsWith("[")) {
+    try {
+      const parsed = JSON.parse(str);
+      const reprocessed = await this.reprocessObject(parsed, ctx);
+      return JSON.stringify(reprocessed);
+    } catch {
+      // não é JSON válido, segue abaixo
     }
+  }
+
+  // 2) Se a string for *exatamente* um comando, deixe pros handlers atuais:
+  if (/^\$[a-zA-Z_][a-zA-Z0-9_]*\[[^\]]*\]$/.test(str.trim())) {
+    return await this.executeFromBeginning(str, ctx);
+  }
+
+  // 3) Se tiver funções embutidas no meio do texto, interpolar:
+  if (this.containsFunctionPatterns(str)) {
+    // importa o utilitário que escreveu no passo 1
+    const { interpolateString } = require("../utils/stringInterpolation");
+    return await interpolateString(str, ctx, Compiler_1.Compiler);
+  }
+
+  // 4) Caso não caia em nenhum dos acima, retorna original
+  return str;
+}
+
 
     /**
      * Executa o código completo desde o início
