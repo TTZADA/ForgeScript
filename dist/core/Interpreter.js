@@ -151,7 +151,7 @@ class Interpreter {
      */
     static isFunctionThatNeedsFullContext(fn) {
         const functionsNeedingContext = [
-            'json', 'object', 'array', 'variable', 'get', 'set',
+            'json', 'object', 'array', 'variable', /* 'get', */ 'set',
             'eval', 'execute', 'parse', 'format', 'template'
         ];
         
