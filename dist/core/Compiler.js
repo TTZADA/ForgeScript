@@ -4,7 +4,6 @@ exports.Compiler = exports.Conditions = exports.Operators = exports.OperatorType
 const CompiledFunction_1 = require("../structures/@internal/CompiledFunction");
 const ForgeError_1 = require("../structures/forge/ForgeError");
 const discord_js_1 = require("discord.js");
-
 var OperatorType;
 (function (OperatorType) {
     OperatorType["Eq"] = "==";
@@ -15,7 +14,6 @@ var OperatorType;
     OperatorType["Lt"] = "<";
     OperatorType["None"] = "unknown";
 })(OperatorType || (exports.OperatorType = OperatorType = {}));
-
 exports.Operators = new Set(Object.values(OperatorType));
 exports.Conditions = {
     unknown: (lhs, rhs) => lhs === "true",
@@ -26,9 +24,8 @@ exports.Conditions = {
     ">": (lhs, rhs) => Number(lhs) > Number(rhs),
     ">=": (lhs, rhs) => Number(lhs) >= Number(rhs),
 };
-
 /**
- * Enhanced Compiler with code reprocessing support
+ * REWRITE NEEDED
  */
 class Compiler {
     path;
@@ -47,24 +44,15 @@ class Compiler {
     static InvalidCharRegex = /(\\|\${|`)/g;
     static Functions = new discord_js_1.Collection();
     static EscapeRegex = /(\.|\$|\(|\)|\*|\[|\]|\{|\}|\?|!|\^)/gim;
-    
-    // Configuração para reprocessamento
-    static maxReprocessDepth = 5; // Evita loops infinitos
-    static reprocessEnabled = true;
-    
     id = 0;
     matches;
     matchIndex = 0;
     index = 0;
     outputFunctions = new Array();
     outputCode = "";
-    reprocessDepth = 0;
-
-    constructor(path, code, depth = 0) {
+    constructor(path, code) {
         this.path = path;
         this.code = code;
-        this.reprocessDepth = depth;
-        
         if (code) {
             this.matches = Array.from(code.matchAll(Compiler.Regex)).map((x) => ({
                 index: x.index,
@@ -78,7 +66,6 @@ class Compiler {
         else
             this.matches = [];
     }
-
     compile() {
         if (this.matches.length !== 0) {
             // Loop while functions are unmatched
@@ -103,133 +90,27 @@ class Compiler {
         }
         else
             this.outputCode = this.code ?? "";
-
         return {
             code: this.outputCode,
             functions: this.outputFunctions,
             resolve: this.wrap(this.outputCode),
-            // Método para reprocessar resultado
-            reprocess: (result) => this.reprocessResult(result),
         };
     }
-
-    /**
-     * Reprocessa o resultado de uma função se contiver código com $
-     */
-    reprocessResult(result) {
-        if (!result || typeof result !== 'string') return result;
-        if (!Compiler.reprocessEnabled) return result;
-        if (this.reprocessDepth >= Compiler.maxReprocessDepth) {
-            console.warn(`Max reprocess depth (${Compiler.maxReprocessDepth}) reached. Stopping reprocessing.`);
-            return result;
-        }
-
-        // Verifica se o resultado contém funções com $
-        if (this.containsFunctions(result)) {
-            try {
-                console.log(`Reprocessing result at depth ${this.reprocessDepth + 1}:`, result.substring(0, 100) + '...');
-                
-                // Compila recursivamente o resultado
-                const reprocessedCompiler = new Compiler(
-                    this.path ? `${this.path} (reprocessed-${this.reprocessDepth + 1})` : `reprocessed-${this.reprocessDepth + 1}`,
-                    result,
-                    this.reprocessDepth + 1
-                );
-                
-                const reprocessedResult = reprocessedCompiler.compile();
-                
-                // Merge das funções reprocessadas
-                this.outputFunctions.push(...reprocessedResult.functions);
-                
-                return {
-                    code: reprocessedResult.code,
-                    functions: reprocessedResult.functions,
-                    resolve: reprocessedResult.resolve,
-                    wasReprocessed: true,
-                    originalResult: result
-                };
-            } catch (error) {
-                console.error('Error during reprocessing:', error);
-                return result; // Retorna o resultado original em caso de erro
-            }
-        }
-
-        return result;
-    }
-
-    /**
-     * Verifica se uma string contém funções com $
-     */
-    containsFunctions(str) {
-        if (!str || typeof str !== 'string') return false;
-        
-        // Verifica se há padrões de função no formato $funcName
-        const functionPattern = /\$[a-zA-Z_][a-zA-Z0-9_]*(\[.*?\])?/g;
-        return functionPattern.test(str);
-    }
-
-    /**
-     * Método estático para reprocessar resultado JSON
-     */
-    static reprocessJsonResult(jsonResult, originalPath) {
-        if (!jsonResult || typeof jsonResult !== 'object') return jsonResult;
-        
-        const processValue = (value, key = null) => {
-            if (typeof value === 'string' && this.prototype.containsFunctions(value)) {
-                try {
-                    const compiler = new Compiler(
-                        originalPath ? `${originalPath} (json-reprocess)` : 'json-reprocess',
-                        value
-                    );
-                    const result = compiler.compile();
-                    return {
-                        ...result,
-                        wasReprocessed: true,
-                        originalValue: value,
-                        jsonKey: key
-                    };
-                } catch (error) {
-                    console.error(`Error reprocessing JSON key "${key}":`, error);
-                    return value;
-                }
-            }
-            
-            if (Array.isArray(value)) {
-                return value.map((item, index) => processValue(item, `${key}[${index}]`));
-            }
-            
-            if (value && typeof value === 'object') {
-                const processed = {};
-                for (const [k, v] of Object.entries(value)) {
-                    processed[k] = processValue(v, key ? `${key}.${k}` : k);
-                }
-                return processed;
-            }
-            
-            return value;
-        };
-
-        return processValue(jsonResult);
-    }
-
     parseFunction() {
         // Skip this match already
         const match = this.matches[this.matchIndex++];
         // Skip function
         this.skip(match.length);
         const hasFields = this.code[this.index] === Compiler.Syntax.Open;
-        
         if (!hasFields && match.fn.args?.required) {
             this.error(`Function ${match.fn.name} requires brackets`);
         }
         else if (!hasFields || match.fn.args === null) {
             return this.prepareFunction(match, null);
         }
-        
         // Skip [
         this.skip(1);
         const fields = new Array();
-        
         // Field parsing
         for (let i = 0, len = match.fn.args.fields.length; i < len; i++) {
             let isLast = i + 1 === len;
@@ -253,7 +134,6 @@ class Compiler {
         }
         return this.prepareFunction(match, fields);
     }
-
     getCharInfo(char) {
         return {
             isSeparator: char === Compiler.Syntax.Separator,
@@ -261,7 +141,6 @@ class Compiler {
             isEscape: char === Compiler.Syntax.Escape,
         };
     }
-
     parseFieldMatch(fns, match) {
         const fn = this.parseFunction();
         fns.push(fn);
@@ -271,7 +150,6 @@ class Compiler {
             fn,
         };
     }
-
     processEscape() {
         this.index++;
         const next = this.char();
@@ -284,7 +162,6 @@ class Compiler {
             char: next,
         };
     }
-
     parseConditionField(ref) {
         const data = {};
         const functions = new Array();
@@ -292,7 +169,6 @@ class Compiler {
         let closedGracefully = false;
         let match = this.match;
         let char;
-        
         while ((char = this.char()) !== undefined) {
             const { isClosure, isEscape, isSeparator } = this.getCharInfo(char);
             if (isEscape) {
@@ -329,16 +205,13 @@ class Compiler {
             fieldValue += char;
             this.index++;
         }
-        
         if (!closedGracefully)
             this.error(`Function ${ref.fn.name} is missing brace closure`);
-        
         const out = {
             functions,
             value: fieldValue,
             resolve: this.wrap(fieldValue),
         };
-        
         if (data.op)
             data.rhs = out;
         else
@@ -347,14 +220,12 @@ class Compiler {
         data.resolve = this.wrapCondition(data.op);
         return data;
     }
-
     parseNormalField(ref) {
         const functions = new Array();
         let fieldValue = "";
         let closedGracefully = false;
         let match = this.match;
         let char;
-        
         while ((char = this.char()) !== undefined) {
             const { isClosure, isEscape, isSeparator } = this.getCharInfo(char);
             if (isEscape) {
@@ -376,23 +247,19 @@ class Compiler {
             fieldValue += char;
             this.index++;
         }
-        
         if (!closedGracefully)
             this.error(`Function ${ref.fn.name} is missing brace closure`);
-        
         return {
             resolve: this.wrap(fieldValue),
             functions,
             value: fieldValue,
         };
     }
-
     parseAnyField(ref, field) {
         const fld = field.condition ? this.parseConditionField(ref) : this.parseNormalField(ref);
         this.skip(1);
         return fld;
     }
-
     prepareFunction(match, fields) {
         const id = this.getNextId();
         return {
@@ -403,38 +270,29 @@ class Compiler {
             silent: match.silent,
             name: match.fn.name,
             negated: match.negated,
-            // Adiciona informações de reprocessamento
-            canReprocess: true,
-            reprocessDepth: this.reprocessDepth,
         };
     }
-
     skip(n) {
         return this.moveTo(n + this.index);
     }
-
     skipIf(char) {
         if (char === this.code[this.index])
             return this.skip(1), true;
         return false;
     }
-
     get match() {
         return this.matches[this.matchIndex];
     }
-
     getFunction(str) {
         const fn = `$${str.toLowerCase()}`;
         return (Compiler.Functions.get(fn) ??
             Compiler.Functions.find((x) => x.aliases?.some((x) => x.toLowerCase() === fn)) ??
             this.error(`Function ${fn} is not registered.`));
     }
-
     error(str) {
         const { line, column } = this.locate(this.index);
         throw new ForgeError_1.ForgeError(null, ForgeError_1.ErrorType.CompilerError, str, line, column, this.path ?? "index file");
     }
-
     locate(index) {
         const data = {
             column: 0,
@@ -449,15 +307,12 @@ class Compiler {
         }
         return data;
     }
-
     back() {
         return this.code[this.index - 1];
     }
-
     wrapCondition(op) {
         return exports.Conditions[op];
     }
-
     wrap(code) {
         let i = 0;
         const gencode = code.replace(Compiler.InvalidCharRegex, "\\$1").replace(Compiler.SystemRegex, () => {
@@ -465,27 +320,21 @@ class Compiler {
         });
         return new Function("args", "return `" + gencode + "`");
     }
-
     moveTo(index) {
         this.index = index;
     }
-
     getNextId() {
         return `[SYSTEM_FUNCTION(${this.id++})]`;
     }
-
     char() {
         return this.code[this.index];
     }
-
     peek() {
         return this.code[this.index + 1];
     }
-
     next() {
         return this.code[this.index++];
     }
-
     static setFunctions(fns) {
         fns.map((x) => {
             this.Functions.set(x.name.toLowerCase(), x);
@@ -493,14 +342,12 @@ class Compiler {
                 ?.filter((x) => typeof x === "string")
                 ?.map((alias) => this.Functions.set(alias.toLowerCase(), x));
         });
-        
         const mapped = Array.from(this.Functions.keys());
         this.Regex = new RegExp(`\\$(\\!)?(\\#)?(@\\[(.*?)\\])?(${mapped
             .map((x) => (x.startsWith("$") ? x.slice(1).toLowerCase() : x.toLowerCase()).replace(Compiler.EscapeRegex, "\\$1"))
             .sort((x, y) => y.length - x.length)
             .join("|")})`, "gim");
     }
-
     static compile(code, path) {
         const result = new this(path, code).compile();
         return {
@@ -508,32 +355,9 @@ class Compiler {
             functions: result.functions.map((x) => new CompiledFunction_1.CompiledFunction(x)),
         };
     }
-
     static setSyntax(syntax) {
         Reflect.set(Compiler, "Syntax", syntax);
     }
-
-    /**
-     * Configura o reprocessamento
-     */
-    static configureReprocessing(options = {}) {
-        this.reprocessEnabled = options.enabled !== false;
-        this.maxReprocessDepth = options.maxDepth || 5;
-    }
-
-    /**
-     * Desabilita temporariamente o reprocessamento
-     */
-    static disableReprocessing() {
-        this.reprocessEnabled = false;
-    }
-
-    /**
-     * Habilita o reprocessamento
-     */
-    static enableReprocessing() {
-        this.reprocessEnabled = true;
-    }
 }
-
 exports.Compiler = Compiler;
+//# sourceMappingURL=Compiler.js.map

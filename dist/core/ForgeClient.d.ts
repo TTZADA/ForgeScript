@@ -1,4 +1,3 @@
-/// <reference types="node" />
 import { ClientOptions, Client, IntentsBitField, Message } from "discord.js";
 import { IExtendedCompilationResult } from ".";
 import { NativeCommandManager, EventManager, CooldownManager, ForgeFunctionManager, ApplicationCommandManager, ThreadManager, BaseCommandManager } from "../managers";
