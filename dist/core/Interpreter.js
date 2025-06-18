@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Interpreter = void 0;
+const { getCurves } = require("crypto");
 const structures_1 = require("../structures");
 const Compiler_1 = require("./Compiler");
 
@@ -8,6 +9,21 @@ class Interpreter {
     static async run(raw) {
         const ctx = raw instanceof structures_1.Context ? raw : new structures_1.Context(raw);
         const runtime = ctx.runtime;
+
+        // Debug inicial - CRÍTICO
+        structures_1.Logger.debug('=== RUN START ===', {
+            totalVars: Object.keys(ctx.keywords()).length,
+            vars: ctx.keywords()
+        });
+
+        // CORREÇÃO: Agora só configura o interceptor (sem capturar variáveis)
+        this.setupContainerInterceptor(ctx);
+
+        // Debug após interceptor
+        structures_1.Logger.debug('=== AFTER INTERCEPTOR ===', {
+            totalVars: Object.keys(ctx.keywords()).length,
+            vars: ctx.keywords()
+        });
         
         if (runtime.client !== null) {
             if (runtime.command && !ctx.client.canRespondToBots(runtime.command) && ctx.user?.bot)
@@ -33,14 +49,33 @@ class Interpreter {
         }
         else {
             ctx.executionTimestamp = performance.now();
+            
             try {
                 for (let i = 0, len = runtime.data.functions.length; i < len; i++) {
                     const fn = runtime.data.functions[i];
+                    
+                    // Debug antes de cada função
+                    structures_1.Logger.debug(`=== BEFORE FUNCTION ${i} (${fn.name}) ===`, {
+                        totalVars: Object.keys(ctx.keywords()).length,
+                        vars: ctx.keywords()
+                    });
+                    
                     const rt = await fn.execute(ctx);
                     
                     let processedValue = (!rt.success && !ctx.handleNotSuccess(fn, rt)) ? ctx["error"]() : rt.value;
                     
-                    // Nova lógica: Se função falhou, tenta execução completa
+                    
+                    this.updateInterceptorKeywords(ctx);
+
+
+                    // Debug após execução da função
+                    structures_1.Logger.debug(`=== AFTER FUNCTION ${i} (${fn.name}) ===`, {
+                        success: rt.success,
+                        totalVars: Object.keys(ctx.keywords()).length,
+                        vars: ctx.keywords(),
+                        result: processedValue
+                    });
+                    
                     if (!rt.success && this.shouldRetryWithFullExecution(processedValue, fn, ctx)) {
                         structures_1.Logger.debug(`Function ${fn.name} failed, attempting full code execution`);
                         
@@ -50,20 +85,25 @@ class Interpreter {
                                 processedValue = fullExecutionResult;
                             }
                         } catch (fullExecError) {
-                            structures_1.Logger.error(`Full execution failed for ${fn.name}:`, fullExecError);
+                            structures_1.Logger.debug(`Full execution failed for ${fn.name}:`, fullExecError);
                         }
                     }
-                    // Reprocessamento automático se o resultado contém código $
                     else if (rt.success && processedValue != null) {
                         processedValue = await this.handleReprocessing(processedValue, ctx, fn);
                     }
                     
                     args[i] = processedValue;
+                    
+                    // Debug após processamento completo
+                    structures_1.Logger.debug(`=== AFTER PROCESSING ${i} ===`, {
+                        totalVars: Object.keys(ctx.keywords()).length,
+                        vars: ctx.keywords()
+                    });
                 }
             }
             catch (err) {
                 if (err instanceof Error)
-                    structures_1.Logger.error(err);
+                    structures_1.Logger.debug(err);
                 else if (err instanceof structures_1.Return) {
                     if (err.return)
                         return err.value;
@@ -73,23 +113,330 @@ class Interpreter {
             
             content = runtime.data.resolve(args);
             
-            // Reprocessamento final do conteúdo completo
+            // Debug após resolve
+            structures_1.Logger.debug('=== AFTER RESOLVE ===', {
+                totalVars: Object.keys(ctx.keywords()).length,
+                vars: ctx.keywords(),
+                content: content
+            });
+            
             if (content != null) {
                 content = await this.handleReprocessing(content, ctx, null, true);
             }
         }
 
         if (!runtime.doNotSend) {
+            this.updateInterceptorKeywords(ctx);
+
+            // Debug antes do send
+            structures_1.Logger.debug('=== BEFORE SEND ===', {
+                totalVars: Object.keys(ctx.keywords()).length,
+                vars: ctx.keywords()
+            });
+
+            if (content && typeof content === 'string') {
+                // Processa $get uma última vez antes de definir no container
+                content = content.replace(/\$get\[(.+?)\]/g, (match, key) => {
+                    const value = ctx.keywords()[key];
+                    if (value !== undefined) {
+                        return String(value);
+                    }
+                    return match;
+                });
+                
+                if (this.containsFunctionPatterns(content)) {
+                    content = await this.handleReprocessing(content, ctx, null, true);
+                }
+            }
+            
             ctx.container.content = content;
             
-            // NOVA FUNCIONALIDADE: Reprocessa todos os elementos do container
-            await this.reprocessContainer(ctx);
+            // Debug final
+            structures_1.Logger.debug('=== FINAL BEFORE CONTAINER SEND ===', {
+                totalVars: Object.keys(ctx.keywords()).length,
+                vars: ctx.keywords()
+            });
             
+            await this.reprocessContainer(ctx);
             await ctx.container.send(runtime.obj);
         }
         
         return content;
     }
+
+    static debugVariableState(ctx, location) {
+        const vars = ctx.getVars();
+        const varCount = Object.keys(vars).length;
+        
+        structures_1.Logger.debug(`Debug Variables at ${location}:`, {
+            location,
+            varCount,
+            vars: JSON.stringify(vars, null, 2),
+            containerExists: !!ctx.container,
+            runtimeExists: !!ctx.runtime,
+            contextId: ctx.id || 'no-id'
+        });
+    }
+
+ static setupContainerInterceptor(ctx, update = false, keywords = null) {
+    if (!ctx.container) return;
+    
+    // Se é apenas um update, atualiza as keywords e retorna
+    if (update && ctx.container._intercepted) {
+        if (keywords && ctx.container._updateKeywords) {
+            structures_1.Logger.debug('Updating interceptor keywords:', keywords);
+            ctx.container._updateKeywords(keywords);
+        }
+        return;
+    }
+    
+    // Se já foi interceptado e não é update, não faz nada
+    if (ctx.container._intercepted) return;
+    
+    ctx.container._intercepted = true;
+    const originalSend = ctx.container.send.bind(ctx.container);
+
+    // Salva a referência do contexto para garantir acesso às variáveis
+    ctx.container._savedCtx = ctx;
+    
+    // Função para atualizar keywords dinamicamente
+    let currentKeywords = keywords || {};
+    ctx.container._updateKeywords = function(newKeywords) {
+        currentKeywords = newKeywords || {};
+        structures_1.Logger.debug('Keywords updated in interceptor:', currentKeywords);
+    };
+
+    ctx.container.send = async function(obj, content, messageID) {
+        try {
+            // Usa múltiplas estratégias para pegar as keywords
+            let latestKeywords = {};
+            
+            // Estratégia 1: Usar currentKeywords (atualizadas via update)
+            if (currentKeywords && Object.keys(currentKeywords).length > 0) {
+                latestKeywords = currentKeywords;
+                structures_1.Logger.debug('Using currentKeywords:', latestKeywords);
+            }
+            // Estratégia 2: Usar ctx salvo
+            else if (this._savedCtx && typeof this._savedCtx.keywords === 'function') {
+                latestKeywords = this._savedCtx.keywords();
+                structures_1.Logger.debug('Using savedCtx keywords:', latestKeywords);
+            }
+            // Estratégia 3: Usar ctx original (fallback)
+            else if (ctx && typeof ctx.keywords === 'function') {
+                latestKeywords = ctx.keywords();
+                structures_1.Logger.debug('Using original ctx keywords:', latestKeywords);
+            }
+            
+            // Debug das variáveis ANTES de qualquer processamento
+            structures_1.Logger.debug('Container send - latest variables:', latestKeywords);
+            structures_1.Logger.debug('Container send - currentKeywords backup:', currentKeywords);
+            
+            // Se ainda não tem keywords, tenta todas as fontes possíveis
+            if (Object.keys(latestKeywords).length === 0) {
+                structures_1.Logger.debug('NO KEYWORDS FOUND! Debugging context...');
+                structures_1.Logger.debug('ctx exists:', !!ctx);
+                structures_1.Logger.debug('ctx.keywords exists:', !!(ctx && ctx.keywords));
+                structures_1.Logger.debug('savedCtx exists:', !!this._savedCtx);
+                structures_1.Logger.debug('savedCtx.keywords exists:', !!(this._savedCtx && this._savedCtx.keywords));
+                structures_1.Logger.debug('currentKeywords:', currentKeywords);
+                
+                // Usa as currentKeywords como último recurso
+                if (currentKeywords && Object.keys(currentKeywords).length > 0) {
+                    latestKeywords = currentKeywords;
+                    structures_1.Logger.debug('Using currentKeywords as fallback');
+                }
+            }
+            
+            // Processa $get no content do container
+            if (this.content && typeof this.content === 'string') {
+                this.content = this.content.replace(/\$get\[(.+?)\]/g, (match, key) => {
+                    const value = latestKeywords[key];
+                    if (value !== undefined) {
+                        structures_1.Logger.debug(`Replaced $get[${key}] with: ${value}`);
+                        return String(value);
+                    }
+                    structures_1.Logger.debug(`Variable ${key} not found for $get in:`, Object.keys(latestKeywords));
+                    return match;
+                });
+            }
+
+            // Processa $get no content passado como parâmetro
+            if (content && typeof content === 'string') {
+                content = content.replace(/\$get\[(.+?)\]/g, (match, key) => {
+                    const value = latestKeywords[key];
+                    if (value !== undefined) {
+                        structures_1.Logger.debug(`Replaced $get[${key}] with: ${value}`);
+                        return String(value);
+                    }
+                    structures_1.Logger.debug(`Variable ${key} not found for $get in:`, Object.keys(latestKeywords));
+                    return match;
+                });
+            }
+
+            // Reprocessamento adicional se necessário
+            if (this.content && typeof this.content === 'string' && Interpreter.containsFunctionPatterns(this.content)) {
+                this.content = await Interpreter.handleReprocessing(this.content, this._savedCtx || ctx);
+            }
+            
+            if (content && typeof content === 'string' && Interpreter.containsFunctionPatterns(content)) {
+                content = await Interpreter.handleReprocessing(content, this._savedCtx || ctx);
+            }
+
+            // Debug final das variáveis
+            structures_1.Logger.debug('Container send - final variables:', latestKeywords);
+
+            await Interpreter.reprocessContainer(this._savedCtx || ctx);
+            
+            return await originalSend(obj, content, messageID);
+        } catch (error) {
+            structures_1.Logger.debug('Error in container send interceptor:', error);
+            return await originalSend(obj, content, messageID);
+        }
+    };
+    
+    this.setupContentPropertyInterceptor(ctx);
+}
+
+
+   static setupContentPropertyInterceptor(ctx) {
+        if (!ctx.container || ctx.container._contentIntercepted) return;
+        
+        ctx.container._contentIntercepted = true;
+        
+        // Guarda o valor atual
+        let _content = ctx.container.content;
+        
+        // Define um getter/setter para interceptar mudanças
+        Object.defineProperty(ctx.container, 'content', {
+            get() {
+                return _content;
+            },
+            set(value) {
+                // Se o valor é uma string que precisa de reprocessamento,
+                // agenda o reprocessamento para o próximo tick
+                if (value && typeof value === 'string' && Interpreter.containsFunctionPatterns(value)) {
+                    // Agenda reprocessamento assíncrono
+                    process.nextTick(async () => {
+                        try {
+                            // CORREÇÃO: Processa $get com variáveis atuais
+                            let processedValue = value.replace(/\$get\[(.+?)\]/g, (match, key) => {
+                                const currentKeywords = ctx.keywords(); // ✅ OBTÉM DINAMICAMENTE
+                                const varValue = currentKeywords[key];
+                                if (varValue !== undefined) {
+                                    return String(varValue);
+                                }
+                                return match;
+                            });
+                            
+                            const reprocessed = await Interpreter.handleReprocessing(processedValue, ctx);
+                            if (reprocessed !== value) {
+                                _content = reprocessed;
+                            }
+                        } catch (error) {
+                            structures_1.Logger.debug('Error in content property interceptor:', error);
+                        }
+                    });
+                }
+                _content = value;
+            },
+            configurable: true,
+            enumerable: true
+        });
+    }
+
+
+/**
+ * Função para atualizar as keywords do interceptor durante a execução
+ * @param {Context} ctx - Contexto da execução
+ */
+static updateInterceptorKeywords(ctx) {
+    if (!ctx.container || !ctx.container._intercepted) {
+        structures_1.Logger.debug('Tentando atualizar keywords mas interceptor não existe');
+        return;
+    }
+    
+    const currentKeywords = ctx.keywords();
+    structures_1.Logger.debug('Updating interceptor with new keywords:', currentKeywords);
+    
+    // Atualiza usando o método update
+    this.setupContainerInterceptor(ctx, true, currentKeywords);
+}
+
+    // CORREÇÃO: Função auxiliar para obter variáveis atuais
+    static getCurrentKeywords(ctx) {
+        try {
+            return ctx.keywords() || {};
+        } catch (error) {
+            structures_1.Logger.debug('Error getting current keywords:', error);
+            return {};
+        }
+    }
+
+static sendProcess(ctx) {
+    if (!ctx.container || ctx.container._intercepted) return;
+    
+    ctx.container._intercepted = true;
+    const originalSend = ctx.container.send.bind(ctx.container);
+
+    let kw = ctx.keywords();
+    
+    ctx.container.send = async function(obj, content, messageID) {
+        try {
+            
+            // Debug das variáveis ANTES de qualquer processamento
+            structures_1.Logger.debug('Container send - variables before:', kw);
+            
+            // CORREÇÃO: Processa $get SEM alterar contexto
+            if (this.content && typeof this.content === 'string') {
+                this.content = this.content.replace(/\$get\[(.+?)\]/g, (match, key) => {
+                    const value = kw[key];
+                    if (value !== undefined) {
+                        structures_1.Logger.debug(`Replaced $get[${key}] with: ${value}`);
+                        return String(value);
+                    }
+                    structures_1.Logger.debug(`Variable ${key} not found for $get`);
+                    return match;
+                });
+            }
+
+            if (content && typeof content === 'string') {
+                content = content.replace(/\$get\[(.+?)\]/g, (match, key) => {
+                    const value = kw[key];
+                    if (value !== undefined) {
+                        structures_1.Logger.debug(`Replaced $get[${key}] with: ${value}`);
+                        return String(value);
+                    }
+                    structures_1.Logger.debug(`Variable ${key} not found for $get`);
+                    return match;
+                });
+            }
+
+            // Debug das variáveis APÓS processamento $get
+            structures_1.Logger.debug('Container send - variables after $get:', kw);
+
+            // Reprocessamento adicional SEM criar novo contexto
+            if (this.content && typeof this.content === 'string' && Interpreter.containsFunctionPatterns(this.content)) {
+                this.content = await Interpreter.handleReprocessing(this.content, ctx);
+            }
+            
+            if (content && typeof content === 'string' && Interpreter.containsFunctionPatterns(content)) {
+                content = await Interpreter.handleReprocessing(content, ctx);
+            }
+
+            // Debug final das variáveis
+            structures_1.Logger.debug('Container send - variables final:', kw);
+
+            await Interpreter.reprocessContainer(ctx);
+            
+            return await originalSend(obj, content, messageID);
+        } catch (error) {
+            structures_1.Logger.debug('Error in container send interceptor:', error);
+            return await originalSend(obj, content, messageID);
+        }
+    };
+    
+    this.setupContentPropertyInterceptor(ctx);
+}
 
     /**
      * Reprocessa todos os elementos do container (embeds, componentes, etc.)
@@ -98,6 +445,10 @@ class Interpreter {
         try {
             const container = ctx.container;
             
+            if (container.send && container.send.length > 0) {
+                this.sendProcess(ctx)
+            }
+
             // Reprocessa embeds
             if (container.embeds && container.embeds.length > 0) {
                 for (let i = 0; i < container.embeds.length; i++) {
@@ -148,7 +499,7 @@ class Interpreter {
             }
             
         } catch (error) {
-            structures_1.Logger.error('Error reprocessing container:', error);
+            structures_1.Logger.debug('Error reprocessing container:', error);
         }
     }
 
@@ -178,7 +529,7 @@ class Interpreter {
             
             return newEmbed;
         } catch (error) {
-            structures_1.Logger.error('Error reprocessing embed:', error);
+            structures_1.Logger.debug('Error reprocessing embed:', error);
             return embed;
         }
     }
@@ -267,7 +618,7 @@ class Interpreter {
             
             return reprocessedComponent;
         } catch (error) {
-            structures_1.Logger.error('Error reprocessing component:', error);
+            structures_1.Logger.debug('Error reprocessing component:', error);
             return component;
         }
     }
@@ -291,7 +642,7 @@ class Interpreter {
             
             return reprocessedFile;
         } catch (error) {
-            structures_1.Logger.error('Error reprocessing file:', error);
+            structures_1.Logger.debug('Error reprocessing file:', error);
             return file;
         }
     }
@@ -324,7 +675,7 @@ class Interpreter {
             
             return reprocessedModal;
         } catch (error) {
-            structures_1.Logger.error('Error reprocessing modal:', error);
+            structures_1.Logger.debug('Error reprocessing modal:', error);
             return modal;
         }
     }
@@ -359,7 +710,7 @@ class Interpreter {
             
             return reprocessedPoll;
         } catch (error) {
-            structures_1.Logger.error('Error reprocessing poll:', error);
+            structures_1.Logger.debug('Error reprocessing poll:', error);
             return poll;
         }
     }
@@ -488,7 +839,7 @@ class Interpreter {
             return null;
         }
         catch (error) {
-            structures_1.Logger.error('Error in executeFullCodeForFailedFunction:', error);
+            structures_1.Logger.debug('Error in executeFullCodeForFailedFunction:', error);
             return null;
         }
     }
@@ -525,7 +876,7 @@ class Interpreter {
             return content;
         }
         catch (error) {
-            structures_1.Logger.error('Error in runFullExecutionForFailure:', error);
+            structures_1.Logger.debug('Error in runFullExecutionForFailure:', error);
             return null;
         }
     }
@@ -562,32 +913,50 @@ class Interpreter {
      * Manipula o reprocessamento de resultados que podem conter código $
      */
     static async handleReprocessing(value, ctx, sourceFunction = null, isFinalContent = false) {
-        try {
-            // Verifica se o valor precisa de reprocessamento
-            if (!this.needsReprocessing(value)) {
-                return value;
-            }
-
-            const reprocessingInfo = this.getReprocessingInfo(value, sourceFunction, isFinalContent);
-            
-            if (reprocessingInfo.shouldReprocess) {
-                structures_1.Logger.debug(`Reprocessing ${reprocessingInfo.type} from ${sourceFunction?.name || 'final content'}`);
-                
-                const reprocessed = await this.reprocessValue(value, ctx, reprocessingInfo);
-                
-                if (reprocessed !== value) {
-                    structures_1.Logger.debug(`Reprocessing successful for ${reprocessingInfo.type}`);
-                    return reprocessed;
-                }
-            }
-            
+    try {
+        if (!this.needsReprocessing(value)) {
             return value;
         }
-        catch (error) {
-            structures_1.Logger.error('Error during reprocessing:', error);
-            return value; // Retorna valor original em caso de erro
+
+        // Debug das variáveis no início do reprocessamento
+        structures_1.Logger.debug(`Reprocessing ${typeof value} - variables available:`, ctx.keywords());
+
+        // Se é string simples com apenas $get, processa diretamente
+        if (typeof value === 'string' && /^\$get\[.+\]$/.test(value.trim())) {
+            const match = value.match(/\$get\[(.+?)\]/);
+            if (match) {
+                const varValue = ctx.keywords()[match[1]];
+                if (varValue !== undefined) {
+                    structures_1.Logger.debug(`Direct $get replacement: ${match[1]} = ${varValue}`);
+                    return String(varValue);
+                }
+            }
         }
+
+        const reprocessingInfo = this.getReprocessingInfo(value, sourceFunction, isFinalContent);
+        
+        if (reprocessingInfo.shouldReprocess) {
+            structures_1.Logger.debug(`Reprocessing ${reprocessingInfo.type} from ${sourceFunction?.name || 'final content'}`);
+            
+            const reprocessed = await this.reprocessValue(value, ctx, reprocessingInfo);
+            
+            if (reprocessed !== value) {
+                structures_1.Logger.debug(`Reprocessing successful for ${reprocessingInfo.type}`);
+                
+                // Debug das variáveis após reprocessamento
+                structures_1.Logger.debug(`After reprocessing - variables:`, ctx.keywords());
+                
+                return reprocessed;
+            }
+        }
+        
+        return value;
     }
+    catch (error) {
+        structures_1.Logger.debug('Error during reprocessing:', error);
+        return value;
+    }
+}
 
     /**
      * Verifica se um valor precisa de reprocessamento
@@ -633,6 +1002,23 @@ class Interpreter {
         
         return false;
     }
+
+
+    
+    static isJsonString(str) {
+    if (typeof str !== 'string') return false;
+    const trimmed = str.trim();
+    if (!((trimmed.startsWith('{') && trimmed.endsWith('}')) || 
+          (trimmed.startsWith('[') && trimmed.endsWith(']')))) {
+        return false;
+    }
+    try {
+        JSON.parse(trimmed);
+        return true;
+    } catch {
+        return false;
+    }
+}
 
     /**
      * Obtém informações sobre o reprocessamento necessário
@@ -689,28 +1075,41 @@ class Interpreter {
      * Reprocessa uma string que contém código $ - EXECUTA DESDE O INÍCIO
      */
     static async reprocessString(str, ctx) {
-        try {
-            str = str.replace(/\$get\[(.+?)\]/g, (_, key) => ctx.getKeyword(key));
-
-            // Se é JSON, primeiro parse e depois reprocessa
-            if (str.trim().startsWith('{') || str.trim().startsWith('[')) {
-                try {
-                    const parsed = JSON.parse(str);
-                    const reprocessed = await this.reprocessObject(parsed, ctx);
-                    return JSON.stringify(reprocessed);
-                } catch {
-                    // Se não é JSON válido, trata como string normal
-                }
+    try {
+        // Debug inicial
+        structures_1.Logger.debug('reprocessString - initial variables:', ctx.keywords());
+        
+        // Primeiro processa $get diretamente
+        let processed = str.replace(/\$get\[(.+?)\]/g, (match, key) => {
+            const value = ctx.keywords()[key];
+            if (value !== undefined) {
+                structures_1.Logger.debug(`Replaced $get[${key}] with: ${value}`);
+                return String(value);
             }
+            structures_1.Logger.debug(`Variable ${key} not found for $get`);
+            return match;
+        });
 
-            // Execução desde o início - em vez de apenas compilar a string
-            return await this.executeFromBeginning(str, ctx);
+        // Debug após $get
+        structures_1.Logger.debug('reprocessString - after $get processing:', processed);
+
+        // Se ainda há funções para processar E não é JSON
+        if (this.containsFunctionPatterns(processed) && !this.isJsonString(processed)) {
+            // Usa execução completa apenas se realmente necessário
+            processed = await this.executeFromBeginning(processed, ctx);
         }
-        catch (error) {
-            structures_1.Logger.error('Error reprocessing string:', error);
-            return str;
-        }
+
+        // Debug final
+        structures_1.Logger.debug('reprocessString - final result:', processed);
+        structures_1.Logger.debug('reprocessString - final variables:', ctx.keywords());
+
+        return processed;
     }
+    catch (error) {
+        structures_1.Logger.debug('Error reprocessing string:', error);
+        return str;
+    }
+}
 
     /**
      * Executa o código completo desde o início
@@ -745,7 +1144,7 @@ class Interpreter {
             return result || code;
         }
         catch (error) {
-            structures_1.Logger.error('Error in executeFromBeginning:', error);
+            structures_1.Logger.debug('Error in executeFromBeginning:', error);
             return code;
         }
     }
@@ -789,7 +1188,7 @@ class Interpreter {
         }
         catch (err) {
             if (err instanceof Error) {
-                structures_1.Logger.error('Error in full execution:', err);
+                structures_1.Logger.debug('Error in full execution:', err);
             }
             else if (err instanceof structures_1.Return) {
                 if (err.return) {
@@ -804,69 +1203,59 @@ class Interpreter {
     /**
      * Reprocessa um objeto que contém código $
      */
-    static async reprocessObject(obj, ctx) {
-        if (Array.isArray(obj)) {
-            const results = [];
-            for (const item of obj) {
+   static async reprocessObject(obj, ctx) {
+    // ❌ ERRO ORIGINAL: Tentava fazer replace em objeto
+    // ✅ CORREÇÃO: Verifica tipo antes de processar
+    
+    if (Array.isArray(obj)) {
+        const results = [];
+        for (const item of obj) {
+            if (typeof item === 'string') {
+                // Processa $get apenas em strings
+                const processed = item.replace(/\$get\[(.+?)\]/g, (_, key) => {
+                    const value = ctx.keywords()[key];
+                    return value !== undefined ? String(value) : `$get[${key}]`;
+                });
+                results.push(await this.handleReprocessing(processed, ctx));
+            } else {
                 results.push(await this.handleReprocessing(item, ctx));
             }
-            return results;
         }
-        
-        if (obj && typeof obj === 'object') {
-            const result = {};
-            for (const [key, value] of Object.entries(obj)) {
+        return results;
+    }
+    
+    if (obj && typeof obj === 'object') {
+        const result = {};
+        for (const [key, value] of Object.entries(obj)) {
+            if (typeof value === 'string') {
+                // Processa $get apenas em strings
+                const processed = value.replace(/\$get\[(.+?)\]/g, (_, key) => {
+                    const varValue = ctx.keywords()[key];
+                    return varValue !== undefined ? String(varValue) : `$get[${key}]`;
+                });
+                result[key] = await this.handleReprocessing(processed, ctx);
+            } else {
                 result[key] = await this.handleReprocessing(value, ctx);
             }
-            return result;
         }
-        
-        return obj;
+        return result;
     }
+    
+    return obj;
+}
 
   
     /**
      * Cria um contexto completo para execução desde o início
      */
     static createFullExecutionContext(originalCtx) {
-        // Cria um contexto completamente novo mas baseado no original
-        const newCtx = new structures_1.Context({
-            // Copia as propriedades essenciais do contexto original
-            guild: originalCtx.guild,
-            channel: originalCtx.channel,
-            user: originalCtx.user,
-            message: originalCtx.message,
-            client: originalCtx.client,
-            // Copia variáveis e dados importantes
-            variables: originalCtx.keywords() || {},
-            data: originalCtx.data || {},
-            // Adiciona flags para identificar que é reprocessamento
-            isFullReprocessing: true,
-            originalContext: originalCtx,
-            // Copia runtime mas modifica para não enviar
-            runtime: {
-                ...originalCtx.runtime,
-                doNotSend: true
-            }
-        });
-        
-        // Garante que não vai enviar mensagens
-        newCtx.container = {
-            ...originalCtx.container,
-            send: async () => {} // Função vazia para não enviar
-        };
-        
-        // Copia funções de contexto importantes
-        if (originalCtx.handleNotSuccess) {
-            newCtx.handleNotSuccess = originalCtx.handleNotSuccess;
-        }
-        
-        if (originalCtx.error) {
-            newCtx.error = originalCtx.error;
-        }
-        
-        return newCtx;
-    }
+    // ❌ ERRO ORIGINAL: Estava criando contexto novo perdendo as variáveis
+    // ✅ CORREÇÃO: Cria contexto que preserva TODAS as variáveis
+    
+    const newCtx = originalCtx
+    
+    return newCtx;
+}
 
     /**
      * Configura o comportamento de reprocessamento do interpreter
@@ -930,7 +1319,7 @@ class Interpreter {
         return letVariables;
     }
     catch (error) {
-        structures_1.Logger.error('Error retrieving $let variables:', error);
+        structures_1.Logger.debug('Error retrieving $let variables:', error);
         return {};
     }
 }
@@ -941,7 +1330,7 @@ static getLetVariablesAsJsonString(ctx) {
         return JSON.stringify(variables, null, 2);
     }
     catch (error) {
-        structures_1.Logger.error('Error converting variables to JSON string:', error);
+        structures_1.Logger.debug('Error converting variables to JSON string:', error);
         return '{}';
     }
 }
@@ -957,7 +1346,7 @@ static getLetVariable(ctx, varName) {
         return keywords[varName];
     }
     catch (error) {
-        structures_1.Logger.error(`Error retrieving variable '${varName}':`, error);
+        structures_1.Logger.debug(`Error retrieving variable '${varName}':`, error);
         return undefined;
     }
 }
