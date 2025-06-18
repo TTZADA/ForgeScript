@@ -81,10 +81,287 @@ class Interpreter {
 
         if (!runtime.doNotSend) {
             ctx.container.content = content;
+            
+            // NOVA FUNCIONALIDADE: Reprocessa todos os elementos do container
+            await this.reprocessContainer(ctx);
+            
             await ctx.container.send(runtime.obj);
         }
         
         return content;
+    }
+
+    /**
+     * Reprocessa todos os elementos do container (embeds, componentes, etc.)
+     */
+    static async reprocessContainer(ctx) {
+        try {
+            const container = ctx.container;
+            
+            // Reprocessa embeds
+            if (container.embeds && container.embeds.length > 0) {
+                for (let i = 0; i < container.embeds.length; i++) {
+                    container.embeds[i] = await this.reprocessEmbed(container.embeds[i], ctx);
+                }
+            }
+            
+            // Reprocessa componentes (botões, selects, etc.)
+            if (container.components && container.components.length > 0) {
+                for (let i = 0; i < container.components.length; i++) {
+                    container.components[i] = await this.reprocessComponent(container.components[i], ctx);
+                }
+            }
+            
+            // Reprocessa stickers se necessário
+            if (container.stickers && container.stickers.length > 0) {
+                for (let i = 0; i < container.stickers.length; i++) {
+                    if (typeof container.stickers[i] === 'string') {
+                        container.stickers[i] = await this.handleReprocessing(container.stickers[i], ctx);
+                    }
+                }
+            }
+            
+            // Reprocessa files se necessário
+            if (container.files && container.files.length > 0) {
+                for (let i = 0; i < container.files.length; i++) {
+                    container.files[i] = await this.reprocessFile(container.files[i], ctx);
+                }
+            }
+            
+            // Reprocessa modal se existir
+            if (container.modal) {
+                container.modal = await this.reprocessModal(container.modal, ctx);
+            }
+            
+            // Reprocessa poll se existir
+            if (container.poll) {
+                container.poll = await this.reprocessPoll(container.poll, ctx);
+            }
+            
+            // Reprocessa outros campos de texto
+            if (container.username) {
+                container.username = await this.handleReprocessing(container.username, ctx);
+            }
+            
+            if (container.threadName) {
+                container.threadName = await this.handleReprocessing(container.threadName, ctx);
+            }
+            
+        } catch (error) {
+            structures_1.Logger.error('Error reprocessing container:', error);
+        }
+    }
+
+    /**
+     * Reprocessa um embed
+     */
+    static async reprocessEmbed(embed, ctx) {
+        try {
+            if (!embed || typeof embed.toJSON !== 'function') return embed;
+            
+            const embedData = embed.toJSON();
+            const reprocessedData = await this.reprocessEmbedData(embedData, ctx);
+            
+            // Reconstrói o embed com os dados reprocessados
+            const newEmbed = new (require('discord.js').EmbedBuilder)();
+            
+            if (reprocessedData.title) newEmbed.setTitle(reprocessedData.title);
+            if (reprocessedData.description) newEmbed.setDescription(reprocessedData.description);
+            if (reprocessedData.url) newEmbed.setURL(reprocessedData.url);
+            if (reprocessedData.timestamp) newEmbed.setTimestamp(reprocessedData.timestamp);
+            if (reprocessedData.color !== undefined) newEmbed.setColor(reprocessedData.color);
+            if (reprocessedData.footer) newEmbed.setFooter(reprocessedData.footer);
+            if (reprocessedData.image) newEmbed.setImage(reprocessedData.image.url);
+            if (reprocessedData.thumbnail) newEmbed.setThumbnail(reprocessedData.thumbnail.url);
+            if (reprocessedData.author) newEmbed.setAuthor(reprocessedData.author);
+            if (reprocessedData.fields) newEmbed.addFields(reprocessedData.fields);
+            
+            return newEmbed;
+        } catch (error) {
+            structures_1.Logger.error('Error reprocessing embed:', error);
+            return embed;
+        }
+    }
+
+    /**
+     * Reprocessa dados do embed recursivamente
+     */
+    static async reprocessEmbedData(data, ctx) {
+        if (typeof data === 'string') {
+            return await this.handleReprocessing(data, ctx);
+        }
+        
+        if (Array.isArray(data)) {
+            const result = [];
+            for (const item of data) {
+                result.push(await this.reprocessEmbedData(item, ctx));
+            }
+            return result;
+        }
+        
+        if (data && typeof data === 'object') {
+            const result = {};
+            for (const [key, value] of Object.entries(data)) {
+                result[key] = await this.reprocessEmbedData(value, ctx);
+            }
+            return result;
+        }
+        
+        return data;
+    }
+
+    /**
+     * Reprocessa um componente (botão, select, etc.)
+     */
+    static async reprocessComponent(component, ctx) {
+        try {
+            if (!component) return component;
+            
+            // Se é ActionRow, reprocessa os componentes dentro dele
+            if (component.components && Array.isArray(component.components)) {
+                const newComponents = [];
+                for (const subComponent of component.components) {
+                    newComponents.push(await this.reprocessComponent(subComponent, ctx));
+                }
+                return {
+                    ...component,
+                    components: newComponents
+                };
+            }
+            
+            // Reprocessa propriedades de texto do componente
+            const reprocessedComponent = { ...component };
+            
+            if (component.label) {
+                reprocessedComponent.label = await this.handleReprocessing(component.label, ctx);
+            }
+            
+            if (component.placeholder) {
+                reprocessedComponent.placeholder = await this.handleReprocessing(component.placeholder, ctx);
+            }
+            
+            if (component.custom_id) {
+                reprocessedComponent.custom_id = await this.handleReprocessing(component.custom_id, ctx);
+            }
+            
+            if (component.url) {
+                reprocessedComponent.url = await this.handleReprocessing(component.url, ctx);
+            }
+            
+            if (component.value) {
+                reprocessedComponent.value = await this.handleReprocessing(component.value, ctx);
+            }
+            
+            // Para select menus, reprocessa as opções
+            if (component.options && Array.isArray(component.options)) {
+                const newOptions = [];
+                for (const option of component.options) {
+                    const newOption = { ...option };
+                    if (option.label) newOption.label = await this.handleReprocessing(option.label, ctx);
+                    if (option.description) newOption.description = await this.handleReprocessing(option.description, ctx);
+                    if (option.value) newOption.value = await this.handleReprocessing(option.value, ctx);
+                    newOptions.push(newOption);
+                }
+                reprocessedComponent.options = newOptions;
+            }
+            
+            return reprocessedComponent;
+        } catch (error) {
+            structures_1.Logger.error('Error reprocessing component:', error);
+            return component;
+        }
+    }
+
+    /**
+     * Reprocessa um arquivo
+     */
+    static async reprocessFile(file, ctx) {
+        try {
+            if (!file) return file;
+            
+            const reprocessedFile = { ...file };
+            
+            if (file.name) {
+                reprocessedFile.name = await this.handleReprocessing(file.name, ctx);
+            }
+            
+            if (file.description) {
+                reprocessedFile.description = await this.handleReprocessing(file.description, ctx);
+            }
+            
+            return reprocessedFile;
+        } catch (error) {
+            structures_1.Logger.error('Error reprocessing file:', error);
+            return file;
+        }
+    }
+
+    /**
+     * Reprocessa um modal
+     */
+    static async reprocessModal(modal, ctx) {
+        try {
+            if (!modal) return modal;
+            
+            const reprocessedModal = { ...modal };
+            
+            if (modal.title) {
+                reprocessedModal.title = await this.handleReprocessing(modal.title, ctx);
+            }
+            
+            if (modal.custom_id) {
+                reprocessedModal.custom_id = await this.handleReprocessing(modal.custom_id, ctx);
+            }
+            
+            // Reprocessa componentes do modal
+            if (modal.components && Array.isArray(modal.components)) {
+                const newComponents = [];
+                for (const component of modal.components) {
+                    newComponents.push(await this.reprocessComponent(component, ctx));
+                }
+                reprocessedModal.components = newComponents;
+            }
+            
+            return reprocessedModal;
+        } catch (error) {
+            structures_1.Logger.error('Error reprocessing modal:', error);
+            return modal;
+        }
+    }
+
+    /**
+     * Reprocessa uma poll
+     */
+    static async reprocessPoll(poll, ctx) {
+        try {
+            if (!poll) return poll;
+            
+            const reprocessedPoll = { ...poll };
+            
+            if (poll.question) {
+                if (poll.question.text) {
+                    reprocessedPoll.question = {
+                        ...poll.question,
+                        text: await this.handleReprocessing(poll.question.text, ctx)
+                    };
+                }
+            }
+            
+            if (poll.answers && Array.isArray(poll.answers)) {
+                const newAnswers = [];
+                for (const answer of poll.answers) {
+                    const newAnswer = { ...answer };
+                    if (answer.text) newAnswer.text = await this.handleReprocessing(answer.text, ctx);
+                    newAnswers.push(newAnswer);
+                }
+                reprocessedPoll.answers = newAnswers;
+            }
+            
+            return reprocessedPoll;
+        } catch (error) {
+            structures_1.Logger.error('Error reprocessing poll:', error);
+            return poll;
+        }
     }
 
     /**
@@ -151,7 +428,7 @@ class Interpreter {
      */
     static isFunctionThatNeedsFullContext(fn) {
         const functionsNeedingContext = [
-            'json', 'object', 'array', 'variable', /* 'get', */ 'set',
+            'json', 'object', 'array', 'variable', 'get', 'let',
             'eval', 'execute', 'parse', 'format', 'template'
         ];
         
@@ -408,60 +685,32 @@ class Interpreter {
         return value;
     }
 
-    // src/utils/stringInterpolation.ts
+    /**
+     * Reprocessa uma string que contém código $ - EXECUTA DESDE O INÍCIO
+     */
+    static async reprocessString(str, ctx) {
+        try {
+            str = str.replace(/\$get\[(.+?)\]/g, (_, key) => ctx.getKeyword(key));
 
-static async interpolateString(str, ctx, compile) {
-const FUNCTION_PATTERN = /\$([a-zA-Z_][a-zA-Z0-9_]*)\[([^\]]*)\]/g;
-  // coleta todos os matches
-  const matches = Array.from(str.matchAll(FUNCTION_PATTERN));
-  if (matches.length === 0) return str;
+            // Se é JSON, primeiro parse e depois reprocessa
+            if (str.trim().startsWith('{') || str.trim().startsWith('[')) {
+                try {
+                    const parsed = JSON.parse(str);
+                    const reprocessed = await this.reprocessObject(parsed, ctx);
+                    return JSON.stringify(reprocessed);
+                } catch {
+                    // Se não é JSON válido, trata como string normal
+                }
+            }
 
-  let result = str;
-  for (const match of matches) {
-    const [fullMatch, fnName, rawArgs] = match;
-    const fn = compiler.getFunction(fnName);
-    if (!fn) continue;
-
-    const args = rawArgs.split(";"); 
-    const rt = await fn.execute(ctx, args);
-    const value = rt.success ? rt.value : "";
-
-    result = result.replace(fullMatch, value);
-  }
-
-  return result;
-}
-
-
-   // substitua todo o corpo de reprocessString por este
-
-static async reprocessString(str, ctx) {
-  // 1) Se for JSON válido, deixe o caminho antigo para objetos
-  if (str.trim().startsWith("{") || str.trim().startsWith("[")) {
-    try {
-      const parsed = JSON.parse(str);
-      const reprocessed = await this.reprocessObject(parsed, ctx);
-      return JSON.stringify(reprocessed);
-    } catch {
-      // não é JSON válido, segue abaixo
+            // Execução desde o início - em vez de apenas compilar a string
+            return await this.executeFromBeginning(str, ctx);
+        }
+        catch (error) {
+            structures_1.Logger.error('Error reprocessing string:', error);
+            return str;
+        }
     }
-  }
-
-  // 2) Se a string for *exatamente* um comando, deixe pros handlers atuais:
-  if (/^\$[a-zA-Z_][a-zA-Z0-9_]*\[[^\]]*\]$/.test(str.trim())) {
-    return await this.executeFromBeginning(str, ctx);
-  }
-
-  // 3) Se tiver funções embutidas no meio do texto, interpolar:
-  if (this.containsFunctionPatterns(str)) {
-    // importa o utilitário que escreveu no passo 1
-    await this.interpolateString(str, ctx, Compiler_1.Compiler);
-  }
-
-  // 4) Caso não caia em nenhum dos acima, retorna original
-  return str;
-}
-
 
     /**
      * Executa o código completo desde o início
@@ -529,7 +778,7 @@ static async reprocessString(str, ctx) {
             }
             
             // Resolve o resultado final
-            const content = runtime.data.resolve(args);
+           const content = runtime.data.resolve(args);
             
             // Reprocessamento final se necessário
             if (content != null && this.needsReprocessing(content)) {
@@ -550,6 +799,7 @@ static async reprocessString(str, ctx) {
             return null;
         }
     }
+
 
     /**
      * Reprocessa um objeto que contém código $
@@ -574,6 +824,7 @@ static async reprocessString(str, ctx) {
         return obj;
     }
 
+  
     /**
      * Cria um contexto completo para execução desde o início
      */
@@ -587,7 +838,7 @@ static async reprocessString(str, ctx) {
             message: originalCtx.message,
             client: originalCtx.client,
             // Copia variáveis e dados importantes
-            variables: originalCtx.variables || {},
+            variables: originalCtx.keywords() || {},
             data: originalCtx.data || {},
             // Adiciona flags para identificar que é reprocessamento
             isFullReprocessing: true,
@@ -653,6 +904,67 @@ static async reprocessString(str, ctx) {
         handleErrors: true,
         fullExecution: true // Nova opção habilitada por padrão
     };
+
+    static getLetVariablesAsJson(ctx) {
+    try {
+        // Resgata todas as keywords/variáveis do contexto
+        const keywords = ctx.keywords();
+        
+        // Se não há keywords, retorna objeto vazio
+        if (!keywords || typeof keywords !== 'object') {
+            structures_1.Logger.debug('No keywords found in context');
+            return {};
+        }
+        
+        // Filtra apenas as variáveis $let (ou todas se preferir)
+        const letVariables = {};
+        
+        for (const [key, value] of Object.entries(keywords)) {
+            // Considera todas as variáveis como válidas
+            // Se quiser filtrar apenas as criadas com $let, pode adicionar lógica aqui
+            letVariables[key] = value;
+        }
+        
+        structures_1.Logger.debug(`Retrieved ${Object.keys(letVariables).length} variables:`, letVariables);
+        
+        return letVariables;
+    }
+    catch (error) {
+        structures_1.Logger.error('Error retrieving $let variables:', error);
+        return {};
+    }
+}
+
+static getLetVariablesAsJsonString(ctx) {
+    try {
+        const variables = this.getLetVariablesAsJson(ctx);
+        return JSON.stringify(variables, null, 2);
+    }
+    catch (error) {
+        structures_1.Logger.error('Error converting variables to JSON string:', error);
+        return '{}';
+    }
+}
+
+static getLetVariable(ctx, varName) {
+    try {
+        const keywords = ctx.keywords();
+        
+        if (!keywords || typeof keywords !== 'object') {
+            return undefined;
+        }
+        
+        return keywords[varName];
+    }
+    catch (error) {
+        structures_1.Logger.error(`Error retrieving variable '${varName}':`, error);
+        return undefined;
+    }
+}
+
+static getCtx() {
+    return ctx
+}
 }
 
 exports.Interpreter = Interpreter;
