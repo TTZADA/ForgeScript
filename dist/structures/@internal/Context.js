@@ -54,7 +54,7 @@ class Context {
             this.#environment = runtime.environment;
         if (runtime.keywords)
             this.#keywords = runtime.keywords;
-        this.container = runtime.container ??= new Container_1.Container();
+        this.container = runtime.container ??= new Container_1.Container(this);
     }
     get client() {
         return this.runtime.client;
