@@ -438,70 +438,132 @@ static sendProcess(ctx) {
     this.setupContentPropertyInterceptor(ctx);
 }
 
-    /**
+  /**
      * Reprocessa todos os elementos do container (embeds, componentes, etc.)
      */
-    static async reprocessContainer(ctx) {
-        try {
-            const container = ctx.container;
-            
-            if (container.send && container.send.length > 0) {
+
+  static async reprocessContainer(ctx) {
+    try {
+        const container = ctx.container;
+        if (!container) return;
+
+        if (container.send && container.send.length > 0) {
                 this.sendProcess(ctx)
             }
-
-            // Reprocessa embeds
-            if (container.embeds && container.embeds.length > 0) {
-                for (let i = 0; i < container.embeds.length; i++) {
+        
+        // Reprocessa embeds (que já funcionam)
+        if (container.embeds && container.embeds.length > 0) {
+            for (let i = 0; i < container.embeds.length; i++) {
+                try {
                     container.embeds[i] = await this.reprocessEmbed(container.embeds[i], ctx);
+                } catch (error) {
+                    structures_1.Logger.warn(`Error reprocessing embed ${i}:`, error);
                 }
             }
-            
-            // Reprocessa componentes (botões, selects, etc.)
-            if (container.components && container.components.length > 0) {
-                for (let i = 0; i < container.components.length; i++) {
-                    container.components[i] = await this.reprocessComponent(container.components[i], ctx);
+        }
+        
+        // Reprocessa componentes com timeout de segurança
+        if (container.components && container.components.length > 0) {
+            const componentPromises = container.components.map(async (component, i) => {
+                try {
+                    return await Promise.race([
+                        this.reprocessComponent(component, ctx),
+                        new Promise((_, reject) => 
+                            setTimeout(() => reject(new Error('Component timeout')), 5000)
+                        )
+                    ]);
+                } catch (error) {
+                    structures_1.Logger.warn(`Error reprocessing component ${i}:`, error);
+                    return component; // Retorna original em caso de erro
                 }
-            }
+            });
             
-            // Reprocessa stickers se necessário
-            if (container.stickers && container.stickers.length > 0) {
-                for (let i = 0; i < container.stickers.length; i++) {
-                    if (typeof container.stickers[i] === 'string') {
-                        container.stickers[i] = await this.handleReprocessing(container.stickers[i], ctx);
+            container.components = await Promise.all(componentPromises);
+        }
+        
+        // Reprocessa stickers de forma simples
+        if (container.stickers && container.stickers.length > 0) {
+            for (let i = 0; i < container.stickers.length; i++) {
+                if (typeof container.stickers[i] === 'string') {
+                    try {
+                        // Apenas $get, sem reprocessamento complexo
+                        container.stickers[i] = container.stickers[i].replace(/\$get\[(.+?)\]/g, (match, key) => {
+                            const value = ctx.keywords()[key];
+                            return value !== undefined ? String(value) : match;
+                        });
+                    } catch (error) {
+                        structures_1.Logger.warn(`Error processing sticker ${i}:`, error);
                     }
                 }
             }
+        }
+        
+        // Reprocessa files com timeout
+        if (container.files && container.files.length > 0) {
+            const filePromises = container.files.map(async (file, i) => {
+                try {
+                    return await Promise.race([
+                        this.reprocessFile(file, ctx),
+                        new Promise((_, reject) => 
+                            setTimeout(() => reject(new Error('File timeout')), 3000)
+                        )
+                    ]);
+                } catch (error) {
+                    structures_1.Logger.warn(`Error reprocessing file ${i}:`, error);
+                    return file;
+                }
+            });
             
-            // Reprocessa files se necessário
-            if (container.files && container.files.length > 0) {
-                for (let i = 0; i < container.files.length; i++) {
-                    container.files[i] = await this.reprocessFile(container.files[i], ctx);
+            container.files = await Promise.all(filePromises);
+        }
+        
+        // Reprocessa modal com timeout
+        if (container.modal) {
+            try {
+                container.modal = await Promise.race([
+                    this.reprocessModal(container.modal, ctx),
+                    new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('Modal timeout')), 5000)
+                    )
+                ]);
+            } catch (error) {
+                structures_1.Logger.debug('Error reprocessing modal:', error);
+            }
+        }
+        
+        // Reprocessa poll com timeout
+        if (container.poll) {
+            try {
+                container.poll = await Promise.race([
+                    this.reprocessPoll(container.poll, ctx),
+                    new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('Poll timeout')), 3000)
+                    )
+                ]);
+            } catch (error) {
+                structures_1.Logger.debug('Error reprocessing poll:', error);
+            }
+        }
+        
+        // Reprocessa outros campos de texto simples
+        const simpleTextFields = ['username', 'threadName'];
+        for (const field of simpleTextFields) {
+            if (container[field] && typeof container[field] === 'string') {
+                try {
+                    container[field] = container[field].replace(/\$get\[(.+?)\]/g, (match, key) => {
+                        const value = ctx.keywords()[key];
+                        return value !== undefined ? String(value) : match;
+                    });
+                } catch (error) {
+                    structures_1.Logger.warn(`Error processing ${field}:`, error);
                 }
             }
-            
-            // Reprocessa modal se existir
-            if (container.modal) {
-                container.modal = await this.reprocessModal(container.modal, ctx);
-            }
-            
-            // Reprocessa poll se existir
-            if (container.poll) {
-                container.poll = await this.reprocessPoll(container.poll, ctx);
-            }
-            
-            // Reprocessa outros campos de texto
-            if (container.username) {
-                container.username = await this.handleReprocessing(container.username, ctx);
-            }
-            
-            if (container.threadName) {
-                container.threadName = await this.handleReprocessing(container.threadName, ctx);
-            }
-            
-        } catch (error) {
-            structures_1.Logger.debug('Error reprocessing container:', error);
         }
+        
+    } catch (error) {
+        structures_1.Logger.debug('Error reprocessing container:', error);
     }
+}
 
     /**
      * Reprocessa um embed
@@ -561,159 +623,301 @@ static sendProcess(ctx) {
         return data;
     }
 
-    /**
-     * Reprocessa um componente (botão, select, etc.)
-     */
+
     static async reprocessComponent(component, ctx) {
-        try {
-            if (!component) return component;
+    
+    try {
+        if (!component || typeof component !== 'object') return component;
+
+        // Cria uma cópia profunda para evitar mutações
+        let reprocessedComponent = JSON.parse(JSON.stringify(component));
+        
+        // Normaliza a estrutura do componente
+        // Se tem 'data' no primeiro nível, é uma estrutura aninhada
+        if (reprocessedComponent.data && typeof reprocessedComponent.data === 'object') {
+            // Move o type do data para o nível principal se não existir
+            if (reprocessedComponent.data.type && !reprocessedComponent.type) {
+                reprocessedComponent.type = reprocessedComponent.data.type;
+            }
+            // Remove o data após normalizar
+            delete reprocessedComponent.data;
+        }
+        
+        // Garante que ActionRows tenham type = 1
+        if (reprocessedComponent.components && Array.isArray(reprocessedComponent.components)) {
+            if (!reprocessedComponent.type) {
+                reprocessedComponent.type = 1; // ActionRow
+            }
             
-            // Se é ActionRow, reprocessa os componentes dentro dele
-            if (component.components && Array.isArray(component.components)) {
-                const newComponents = [];
-                for (const subComponent of component.components) {
-                    newComponents.push(await this.reprocessComponent(subComponent, ctx));
+            // Processa cada componente dentro do ActionRow
+            const newComponents = [];
+            for (const subComponent of reprocessedComponent.components) {
+                const processed = await this.processIndividualComponent(subComponent, ctx);
+                newComponents.push(processed);
+            }
+            reprocessedComponent.components = newComponents;
+        } else {
+            // Se não é ActionRow, processa como componente individual
+            reprocessedComponent = await this.processIndividualComponent(reprocessedComponent, ctx);
+        }
+        
+        return reprocessedComponent;
+        
+    } catch (error) {
+        structures_1.Logger.warn('Error reprocessing component:', error);
+        return component; // Retorna original em caso de erro
+    }
+}
+
+static async processIndividualComponent(component, ctx) {
+    if (!component || typeof component !== 'object') return component;
+    
+    let processedComponent = { ...component };
+    
+    // Lista de propriedades de texto que podem conter variáveis e funções
+    const textProperties = ['label', 'placeholder', 'custom_id', 'url', 'value'];
+    
+    // Processa propriedades de texto do componente
+    for (const prop of textProperties) {
+        if (processedComponent[prop] && typeof processedComponent[prop] === 'string') {
+            try {
+                processedComponent[prop] = await this.processTextProperty(processedComponent[prop], ctx, prop);
+            } catch (error) {
+                structures_1.Logger.warn(`Error processing component property ${prop}:`, error);
+                // Mantém o valor original em caso de erro
+            }
+        }
+    }
+    
+    // Para select menus, processa as opções
+    if (processedComponent.options && Array.isArray(processedComponent.options)) {
+        const newOptions = [];
+        for (const option of processedComponent.options) {
+            if (!option || typeof option !== 'object') {
+                newOptions.push(option);
+                continue;
+            }
+            
+            const newOption = { ...option };
+            const optionProps = ['label', 'description', 'value'];
+            
+            for (const prop of optionProps) {
+                if (newOption[prop] && typeof newOption[prop] === 'string') {
+                    try {
+                        newOption[prop] = await this.processTextProperty(newOption[prop], ctx, `option.${prop}`);
+                    } catch (error) {
+                        structures_1.Logger.warn(`Error processing option property ${prop}:`, error);
+                    }
                 }
-                return {
-                    ...component,
-                    components: newComponents
+            }
+            newOptions.push(newOption);
+        }
+        processedComponent.options = newOptions;
+    }
+    
+    return processedComponent;
+}
+
+static async processTextProperty(text, ctx, propertyName) {
+    let processed = text;
+    
+    // Processa $get primeiro
+    processed = processed.replace(/\$get\[(.+?)\]/g, (match, key) => {
+        const value = ctx.keywords()[key];
+        if (value !== undefined) {
+            structures_1.Logger.debug(`Replaced $get[${key}] with: ${value} in ${propertyName}`);
+            return String(value);
+        }
+        structures_1.Logger.warn(`Variable ${key} not found for $get in ${propertyName}`);
+        return match;
+    });
+    
+    // Processa funções se existirem
+    if (this.containsFunctionPatterns(processed)) {
+        structures_1.Logger.debug(`Processing functions in ${propertyName}: ${processed}`);
+        processed = await this.handleReprocessing(processed, ctx);
+        structures_1.Logger.debug(`Result after processing ${propertyName}: ${processed}`);
+    }
+    
+    return processed;
+}
+
+/**
+ * Reprocessa um arquivo - VERSÃO CORRIGIDA
+ */
+static async reprocessFile(file, ctx) {
+    try {
+        if (!file || typeof file !== 'object') return file;
+        
+        const reprocessedFile = { ...file };
+        
+        // Processa apenas propriedades de string seguras
+        const textProperties = ['name', 'description'];
+        
+        for (const prop of textProperties) {
+            if (file[prop] && typeof file[prop] === 'string') {
+                try {
+                    // Processa $get primeiro
+                    let processed = file[prop].replace(/\$get\[(.+?)\]/g, (match, key) => {
+                        const value = ctx.keywords()[key];
+                        return value !== undefined ? String(value) : match;
+                    });
+                    
+                    // Reprocessa apenas se não for muito complexo
+                    if (this.containsFunctionPatterns(processed) && processed.length < 500) {
+                        processed = await this.handleReprocessing(processed, ctx);
+                    }
+                    
+                    reprocessedFile[prop] = processed;
+                } catch (error) {
+                    structures_1.Logger.warn(`Error processing file property ${prop}:`, error);
+                    reprocessedFile[prop] = file[prop];
+                }
+            }
+        }
+        
+        return reprocessedFile;
+    } catch (error) {
+        structures_1.Logger.debug('Error reprocessing file:', error);
+        return file;
+    }
+}
+
+/**
+ * Reprocessa um modal - VERSÃO CORRIGIDA
+ */
+static async reprocessModal(modal, ctx) {
+    try {
+        if (!modal || typeof modal !== 'object') return modal;
+        
+        const reprocessedModal = { ...modal };
+        
+        // Processa propriedades de texto básicas
+        if (modal.title && typeof modal.title === 'string') {
+            try {
+                let processed = modal.title.replace(/\$get\[(.+?)\]/g, (match, key) => {
+                    const value = ctx.keywords()[key];
+                    return value !== undefined ? String(value) : match;
+                });
+                
+                if (this.containsFunctionPatterns(processed) && processed.length < 500) {
+                    processed = await this.handleReprocessing(processed, ctx);
+                }
+                
+                reprocessedModal.title = processed;
+            } catch (error) {
+                structures_1.Logger.debug('Error processing modal title:', error);
+                reprocessedModal.title = modal.title;
+            }
+        }
+        
+        if (modal.custom_id && typeof modal.custom_id === 'string') {
+            try {
+                let processed = modal.custom_id.replace(/\$get\[(.+?)\]/g, (match, key) => {
+                    const value = ctx.keywords()[key];
+                    return value !== undefined ? String(value) : match;
+                });
+                
+                reprocessedModal.custom_id = processed;
+            } catch (error) {
+                structures_1.Logger.debug('Error processing modal custom_id:', error);
+                reprocessedModal.custom_id = modal.custom_id;
+            }
+        }
+        
+        // Reprocessa componentes do modal de forma mais segura
+        if (modal.components[0].data && Array.isArray(modal.components[0].data)) {
+            const newComponents = [];
+            for (const component of modal.components[0].data) {
+                try {
+                    const processed = await this.reprocessComponent(component, ctx);
+                    newComponents.push(processed);
+                } catch (error) {
+                    structures_1.Logger.debug('Error processing modal component:', error);
+                    newComponents.push(component); // Mantém original em caso de erro
+                }
+            }
+            reprocessedModal.components[0].data = newComponents;
+        }
+        
+        return reprocessedModal;
+    } catch (error) {
+        structures_1.Logger.debug('Error reprocessing modal:', error);
+        return modal;
+    }
+}
+
+/**
+ * Reprocessa uma poll - VERSÃO CORRIGIDA
+ */
+static async reprocessPoll(poll, ctx) {
+    try {
+        if (!poll || typeof poll !== 'object') return poll;
+        
+        const reprocessedPoll = { ...poll };
+        
+        // Processa a pergunta da poll
+        if (poll.question && typeof poll.question === 'object' && poll.question.text) {
+            try {
+                let processed = poll.question.text.replace(/\$get\[(.+?)\]/g, (match, key) => {
+                    const value = ctx.keywords()[key];
+                    return value !== undefined ? String(value) : match;
+                });
+                
+                if (this.containsFunctionPatterns(processed) && processed.length < 500) {
+                    processed = await this.handleReprocessing(processed, ctx);
+                }
+                
+                reprocessedPoll.question = {
+                    ...poll.question,
+                    text: processed
                 };
+            } catch (error) {
+                structures_1.Logger.debug('Error processing poll question:', error);
+                reprocessedPoll.question = poll.question;
             }
-            
-            // Reprocessa propriedades de texto do componente
-            const reprocessedComponent = { ...component };
-            
-            if (component.label) {
-                reprocessedComponent.label = await this.handleReprocessing(component.label, ctx);
-            }
-            
-            if (component.placeholder) {
-                reprocessedComponent.placeholder = await this.handleReprocessing(component.placeholder, ctx);
-            }
-            
-            if (component.custom_id) {
-                reprocessedComponent.custom_id = await this.handleReprocessing(component.custom_id, ctx);
-            }
-            
-            if (component.url) {
-                reprocessedComponent.url = await this.handleReprocessing(component.url, ctx);
-            }
-            
-            if (component.value) {
-                reprocessedComponent.value = await this.handleReprocessing(component.value, ctx);
-            }
-            
-            // Para select menus, reprocessa as opções
-            if (component.options && Array.isArray(component.options)) {
-                const newOptions = [];
-                for (const option of component.options) {
-                    const newOption = { ...option };
-                    if (option.label) newOption.label = await this.handleReprocessing(option.label, ctx);
-                    if (option.description) newOption.description = await this.handleReprocessing(option.description, ctx);
-                    if (option.value) newOption.value = await this.handleReprocessing(option.value, ctx);
-                    newOptions.push(newOption);
-                }
-                reprocessedComponent.options = newOptions;
-            }
-            
-            return reprocessedComponent;
-        } catch (error) {
-            structures_1.Logger.debug('Error reprocessing component:', error);
-            return component;
         }
+        
+        // Processa as respostas da poll
+        if (poll.answers && Array.isArray(poll.answers)) {
+            const newAnswers = [];
+            for (const answer of poll.answers) {
+                if (!answer || typeof answer !== 'object') {
+                    newAnswers.push(answer);
+                    continue;
+                }
+                
+                const newAnswer = { ...answer };
+                if (answer.text && typeof answer.text === 'string') {
+                    try {
+                        let processed = answer.text.replace(/\$get\[(.+?)\]/g, (match, key) => {
+                            const value = ctx.keywords()[key];
+                            return value !== undefined ? String(value) : match;
+                        });
+                        
+                        if (this.containsFunctionPatterns(processed) && processed.length < 500) {
+                            processed = await this.handleReprocessing(processed, ctx);
+                        }
+                        
+                        newAnswer.text = processed;
+                    } catch (error) {
+                        structures_1.Logger.debug('Error processing poll answer:', error);
+                        newAnswer.text = answer.text;
+                    }
+                }
+                newAnswers.push(newAnswer);
+            }
+            reprocessedPoll.answers = newAnswers;
+        }
+        
+        return reprocessedPoll;
+    } catch (error) {
+        structures_1.Logger.debug('Error reprocessing poll:', error);
+        return poll;
     }
+}
 
-    /**
-     * Reprocessa um arquivo
-     */
-    static async reprocessFile(file, ctx) {
-        try {
-            if (!file) return file;
-            
-            const reprocessedFile = { ...file };
-            
-            if (file.name) {
-                reprocessedFile.name = await this.handleReprocessing(file.name, ctx);
-            }
-            
-            if (file.description) {
-                reprocessedFile.description = await this.handleReprocessing(file.description, ctx);
-            }
-            
-            return reprocessedFile;
-        } catch (error) {
-            structures_1.Logger.debug('Error reprocessing file:', error);
-            return file;
-        }
-    }
 
-    /**
-     * Reprocessa um modal
-     */
-    static async reprocessModal(modal, ctx) {
-        try {
-            if (!modal) return modal;
-            
-            const reprocessedModal = { ...modal };
-            
-            if (modal.title) {
-                reprocessedModal.title = await this.handleReprocessing(modal.title, ctx);
-            }
-            
-            if (modal.custom_id) {
-                reprocessedModal.custom_id = await this.handleReprocessing(modal.custom_id, ctx);
-            }
-            
-            // Reprocessa componentes do modal
-            if (modal.components && Array.isArray(modal.components)) {
-                const newComponents = [];
-                for (const component of modal.components) {
-                    newComponents.push(await this.reprocessComponent(component, ctx));
-                }
-                reprocessedModal.components = newComponents;
-            }
-            
-            return reprocessedModal;
-        } catch (error) {
-            structures_1.Logger.debug('Error reprocessing modal:', error);
-            return modal;
-        }
-    }
-
-    /**
-     * Reprocessa uma poll
-     */
-    static async reprocessPoll(poll, ctx) {
-        try {
-            if (!poll) return poll;
-            
-            const reprocessedPoll = { ...poll };
-            
-            if (poll.question) {
-                if (poll.question.text) {
-                    reprocessedPoll.question = {
-                        ...poll.question,
-                        text: await this.handleReprocessing(poll.question.text, ctx)
-                    };
-                }
-            }
-            
-            if (poll.answers && Array.isArray(poll.answers)) {
-                const newAnswers = [];
-                for (const answer of poll.answers) {
-                    const newAnswer = { ...answer };
-                    if (answer.text) newAnswer.text = await this.handleReprocessing(answer.text, ctx);
-                    newAnswers.push(newAnswer);
-                }
-                reprocessedPoll.answers = newAnswers;
-            }
-            
-            return reprocessedPoll;
-        } catch (error) {
-            structures_1.Logger.debug('Error reprocessing poll:', error);
-            return poll;
-        }
-    }
 
     /**
      * Verifica se deve tentar execução completa após falha
@@ -949,6 +1153,7 @@ static sendProcess(ctx) {
                 return reprocessed;
             }
         }
+
         
         return value;
     }
@@ -1346,7 +1551,7 @@ static getLetVariable(ctx, varName) {
         return keywords[varName];
     }
     catch (error) {
-        structures_1.Logger.debug(`Error retrieving variable '${varName}':`, error);
+        structures_1.Logger.warn(`Error retrieving variable '${varName}':`, error);
         return undefined;
     }
 }
