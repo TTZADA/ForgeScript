@@ -448,14 +448,14 @@ static sendProcess(ctx) {
         if (!container) return;
 
         if (container.send && container.send.length > 0) {
-                this.sendProcess(ctx)
-            }
+            this.sendProcess(ctx);
+        }
         
-        // Reprocessa embeds (que já funcionam)
+        // Reprocessa embeds com múltiplas passadas até não haver mais funções
         if (container.embeds && container.embeds.length > 0) {
             for (let i = 0; i < container.embeds.length; i++) {
                 try {
-                    container.embeds[i] = await this.reprocessEmbed(container.embeds[i], ctx);
+                    container.embeds[i] = await this.reprocessEmbedCompletely(container.embeds[i], ctx);
                 } catch (error) {
                     structures_1.Logger.warn(`Error reprocessing embed ${i}:`, error);
                 }
@@ -560,68 +560,158 @@ static sendProcess(ctx) {
             }
         }
         
-    } catch (error) {
+   } catch (error) {
         structures_1.Logger.debug('Error reprocessing container:', error);
     }
 }
 
-    /**
-     * Reprocessa um embed
-     */
-    static async reprocessEmbed(embed, ctx) {
-        try {
-            if (!embed || typeof embed.toJSON !== 'function') return embed;
-            
-            const embedData = embed.toJSON();
+/**
+ * Reprocessa um embed completamente até não haver mais funções para processar
+ */
+static async reprocessEmbedCompletely(embed, ctx, maxIterations = 10) {
+    try {
+        if (!embed || typeof embed.toJSON !== 'function') return embed;
+        
+        let currentEmbed = embed;
+        let iteration = 0;
+        
+        while (iteration < maxIterations) {
+            const embedData = currentEmbed.toJSON();
             const reprocessedData = await this.reprocessEmbedData(embedData, ctx);
             
+            // Verifica se ainda há funções não processadas
+            const hasUnprocessedFunctions = this.hasUnprocessedFunctions(reprocessedData);
+            
             // Reconstrói o embed com os dados reprocessados
-            const newEmbed = new (require('discord.js').EmbedBuilder)();
+            currentEmbed = this.buildEmbedFromData(reprocessedData);
             
-            if (reprocessedData.title) newEmbed.setTitle(reprocessedData.title);
-            if (reprocessedData.description) newEmbed.setDescription(reprocessedData.description);
-            if (reprocessedData.url) newEmbed.setURL(reprocessedData.url);
-            if (reprocessedData.timestamp) newEmbed.setTimestamp(reprocessedData.timestamp);
-            if (reprocessedData.color !== undefined) newEmbed.setColor(reprocessedData.color);
-            if (reprocessedData.footer) newEmbed.setFooter(reprocessedData.footer);
-            if (reprocessedData.image) newEmbed.setImage(reprocessedData.image.url);
-            if (reprocessedData.thumbnail) newEmbed.setThumbnail(reprocessedData.thumbnail.url);
-            if (reprocessedData.author) newEmbed.setAuthor(reprocessedData.author);
-            if (reprocessedData.fields) newEmbed.addFields(reprocessedData.fields);
+            iteration++;
             
-            return newEmbed;
-        } catch (error) {
-            structures_1.Logger.debug('Error reprocessing embed:', error);
-            return embed;
+            // Se não há mais funções para processar, para o loop
+            if (!hasUnprocessedFunctions) {
+                structures_1.Logger.debug(`Embed processed completely in ${iteration} iteration(s)`);
+                break;
+            }
+            
+            // Log para debug em caso de muitas iterações
+            if (iteration >= maxIterations - 1) {
+                structures_1.Logger.warn(`Embed reached maximum iterations (${maxIterations}), stopping to prevent infinite loop`);
+            }
         }
+        
+        return currentEmbed;
+        
+    } catch (error) {
+        structures_1.Logger.debug('Error reprocessing embed completely:', error);
+        return embed;
     }
+}
 
-    /**
-     * Reprocessa dados do embed recursivamente
-     */
-    static async reprocessEmbedData(data, ctx) {
-        if (typeof data === 'string') {
-            return await this.handleReprocessing(data, ctx);
-        }
-        
-        if (Array.isArray(data)) {
-            const result = [];
-            for (const item of data) {
-                result.push(await this.reprocessEmbedData(item, ctx));
-            }
-            return result;
-        }
-        
-        if (data && typeof data === 'object') {
-            const result = {};
-            for (const [key, value] of Object.entries(data)) {
-                result[key] = await this.reprocessEmbedData(value, ctx);
-            }
-            return result;
-        }
-        
-        return data;
+/**
+ * Verifica se ainda existem funções não processadas no embed
+ */
+static hasUnprocessedFunctions(data) {
+    // Regex geral que captura qualquer função $functionName[...] ou $functionName
+    const generalFunctionPattern = /\$[a-zA-Z0-9]+(?:\[.+?\])?/g;
+    
+    return this.checkDataForPattern(data, generalFunctionPattern);
+}
+
+/**
+ * Verifica recursivamente se há padrão não processado nos dados
+ */
+static checkDataForPattern(data, pattern) {
+    if (typeof data === 'string') {
+        return pattern.test(data);
     }
+    
+    if (Array.isArray(data)) {
+        return data.some(item => this.checkDataForPattern(item, pattern));
+    }
+    
+    if (data && typeof data === 'object') {
+        return Object.values(data).some(value => this.checkDataForPattern(value, pattern));
+    }
+    
+    return false;
+}
+
+/**
+ * Constrói um embed a partir dos dados processados
+ */
+static buildEmbedFromData(reprocessedData) {
+    const newEmbed = new (require('discord.js').EmbedBuilder)();
+    
+    if (reprocessedData.title) newEmbed.setTitle(reprocessedData.title);
+    if (reprocessedData.description) newEmbed.setDescription(reprocessedData.description);
+    if (reprocessedData.url) newEmbed.setURL(reprocessedData.url);
+    if (reprocessedData.color !== undefined) newEmbed.setColor(reprocessedData.color);
+    if (reprocessedData.footer) newEmbed.setFooter(reprocessedData.footer);
+    if (reprocessedData.image) newEmbed.setImage(reprocessedData.image.url);
+    if (reprocessedData.thumbnail) newEmbed.setThumbnail(reprocessedData.thumbnail.url);
+    if (reprocessedData.author) newEmbed.setAuthor(reprocessedData.author);
+    if (reprocessedData.fields && reprocessedData.fields.length > 0) {
+        newEmbed.addFields(reprocessedData.fields);
+    }
+    if (reprocessedData.timestamp) {
+        if (!reprocessedData.fields) {
+        newEmbed.setTimestamp(reprocessedData.timestamp);
+        } else {
+            newEmbed.setTimestamp();
+        }
+    }
+    
+    return newEmbed;
+}
+
+/**
+ * Reprocessa dados do embed recursivamente com processamento aprimorado
+ */
+static async reprocessEmbedData(data, ctx) {
+    if (typeof data === 'string') {
+        return await this.handleReprocessing(data, ctx);
+    }
+    
+    if (Array.isArray(data)) {
+        const result = [];
+        for (const item of data) {
+            result.push(await this.reprocessEmbedData(item, ctx));
+        }
+        return result;
+    }
+    
+    if (data && typeof data === 'object') {
+        const result = {};
+        for (const [key, value] of Object.entries(data)) {
+            result[key] = await this.reprocessEmbedData(value, ctx);
+        }
+        return result;
+    }
+    
+    return data;
+}
+
+static async processWithExistingSystem(text, ctx) {
+    try {
+        // Aqui você deve chamar o sistema de processamento já existente do seu bot
+        // Por exemplo, se você tem uma função como ctx.processText() ou similar
+        
+        // Exemplo de implementação genérica:
+        if (ctx.processText && typeof ctx.processText === 'function') {
+            return await ctx.handleReprocessing(text, ctx);
+        }
+        
+        // Se não há sistema específico, usa processamento básico
+        return text.replace(/\$get\[(.+?)\]/g, (match, key) => {
+            const value = ctx.keywords()[key];
+            return value !== undefined ? String(value) : match;
+        });
+        
+    } catch (error) {
+        structures_1.Logger.debug('Error processing with existing system:', error);
+        return text;
+    }
+}
 
 
     static async reprocessComponent(component, ctx) {
