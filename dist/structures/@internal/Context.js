@@ -41,7 +41,6 @@ class Context {
     executionTimestamp;
     http = {};
     automodRule = {};
-    component = {};
     timezone = "UTC";
     calendar;
     localFunctions = new Map();
@@ -55,7 +54,7 @@ class Context {
             this.#environment = runtime.environment;
         if (runtime.keywords)
             this.#keywords = runtime.keywords;
-        this.container = runtime.container ??= new Container_1.Container();
+        this.container = runtime.container ??= new Container_1.Container(this);
     }
     get client() {
         return this.runtime.client;
@@ -95,9 +94,6 @@ class Context {
     }
     get sticker() {
         return (this.#cache.sticker ??= this.obj instanceof discord_js_1.Sticker ? this.obj : null);
-    }
-    get sound() {
-        return (this.#cache.sound ??= this.obj instanceof discord_js_1.SoundboardSound ? this.obj : null);
     }
     get role() {
         return (this.#cache.role ??= this.obj instanceof discord_js_1.Role ? this.obj : null);
@@ -238,6 +234,9 @@ class Context {
     }
     getKeyword(name) {
         return this.#keywords[name];
+    }
+    keywords() {
+        return this.#keywords;
     }
     deleteKeyword(name) {
         return delete this.#keywords[name];
