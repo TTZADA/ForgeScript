@@ -31,7 +31,7 @@ exports.default = new structures_1.NativeFunction({
     ],
     output: (0, array_1.default)(),
     async execute(ctx, [guild, sep]) {
-        return this.success((guild ?? ctx.guild).members.cache.filter(m => m.isCommunicationDisabled()).map(member => member.id).join(sep ?? ", "));
+        return this.success((guild ?? ctx.guild)?.members.cache.filter(m => m.isCommunicationDisabled()).map(member => member.id).join(sep ?? ", "));
     },
 });
 //# sourceMappingURL=guildTimedOutMembers.js.map

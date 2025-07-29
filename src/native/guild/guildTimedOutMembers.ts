@@ -27,6 +27,6 @@ export default new NativeFunction({
     ],
     output: array<ArgType.Member>(),
     async execute(ctx, [guild, sep]) {
-        return this.success((guild ?? ctx.guild).members.cache.filter(m => m.isCommunicationDisabled()).map(member => member.id).join(sep ?? ", "))
+        return this.success((guild ?? ctx.guild)?.members.cache.filter(m => m.isCommunicationDisabled()).map(member => member.id).join(sep ?? ", "))
     },
 })

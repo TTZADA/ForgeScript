@@ -74,10 +74,11 @@ export default async function(functionsAbsolutePath: string, mainCategoryName?: 
     const metaOutPath = "./metadata"
     if (!existsSync(metaOutPath)) mkdirSync(metaOutPath)
 
-    const dir = join(__dirname, "..")
+    const toSrcPath = (absPath: string) => relative(cwd(), absPath).replace(/^dist\//, "src/")
+
     writeFileSync(join(metaOutPath, "paths.json"), JSON.stringify({
-        functions: "src/" + relative(dir, functionsAbsolutePath),
-        ...(eventsAbsolutePath && { events: "src/" + relative(dir, eventsAbsolutePath) })
+        functions: toSrcPath(functionsAbsolutePath),
+        ...(eventsAbsolutePath && { events: toSrcPath(eventsAbsolutePath) })
     }), "utf-8")
 
     const v = require(cwd() + "/package.json").version
