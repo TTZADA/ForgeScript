@@ -26,7 +26,7 @@ export default new NativeFunction({
         const buffer = ctx.getEnvironmentInstance(Buffer, name)
         if (buffer !== null) {
             const ref = Buffer.alloc(length)
-            buffer.copy(ref, 0, 0, ref.length)
+            buffer.copy(new Uint8Array(ref), 0, 0, ref.length)
             ctx.setEnvironmentKey(name, ref)
         }
         return this.success()

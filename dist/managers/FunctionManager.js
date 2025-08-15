@@ -63,7 +63,7 @@ class FunctionManager {
             const d = { ...x.data };
             d.args?.forEach((x) => Reflect.deleteProperty(x, "check"));
             Reflect.deleteProperty(d, "execute");
-            const data = (0, v8_1.deserialize)((0, v8_1.serialize)(d));
+            const data = (0, v8_1.deserialize)(new Uint8Array((0, v8_1.serialize)(d)));
             data.args?.map((x) => {
                 x.type = NativeFunction_1.ArgType[x.type];
                 if (x.enum)

@@ -1,4 +1,4 @@
-import { deflateSync, inflateSync } from "zlib"
+import { inflateSync } from "zlib"
 import { ArgType, NativeFunction, Return } from "../../structures"
 
 export default new NativeFunction({
@@ -25,6 +25,6 @@ export default new NativeFunction({
         }
     ],
     execute(ctx, [ input, enc ]) {
-        return this.success(inflateSync(Buffer.from(input, (enc ?? "hex") as BufferEncoding)).toString("utf-8"))
+        return this.success(inflateSync(new Uint8Array(Buffer.from(input, (enc ?? "hex") as BufferEncoding))).toString("utf-8"))
     },
 })

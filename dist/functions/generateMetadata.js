@@ -9,7 +9,7 @@ const translate_1 = require("./translate");
 const path_1 = require("path");
 const FunctionNameRegex = /(name: "\$?(\w+)"),?/m;
 const FunctionCategoryRegex = /\r?\n(.*)(category: "\$?(\w+)"),?/m;
-const ArgEnumRegex = /(?:enum: +(\w+),?|Arg\.(?:\w+)Enum\([\r\n\t ]?(\w+))/gim;
+const ArgEnumRegex = /(?:enum: +(\w+),?|Arg\.(?:\w+)Enum\([\r\n\t ]*(\w+))/gim;
 const OutputRegex = /output:(array(<[A-Za-z.]+>)?\((\w+)?\)|(\w+)|ArgType.(\w+)|\[((array(<[A-Za-z.]+>)?\(\w*\)|\w+|ArgType\.\w+),?)+\]),/im;
 function getOutputValues(fn, txt, enums) {
     const output = OutputRegex.exec(txt.replace(/[^0-9A-Za-z:,.[\]<>()|]/gm, ""))?.[1].replace(/[[\]]/g, "").trim();

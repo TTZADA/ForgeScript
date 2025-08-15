@@ -1,4 +1,3 @@
-import { readdirSync } from "fs"
 import { ArgType, IArg, INativeFunction, NativeFunction } from "../structures/@internal/NativeFunction"
 import { IRawFunction, Compiler } from "../core"
 import recursiveReaddirSync from "../functions/recursiveReaddirSync"
@@ -78,7 +77,7 @@ export class FunctionManager {
             const d = { ...x.data }            
             d.args?.forEach((x) => Reflect.deleteProperty(x, "check"))
             Reflect.deleteProperty(d, "execute")
-            const data = deserialize(serialize(d)) as INativeFunction<any>
+            const data = deserialize(new Uint8Array(serialize(d))) as INativeFunction<any>
             
             data.args?.map((x) => {
                 x.type = ArgType[x.type]

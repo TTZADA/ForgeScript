@@ -9,7 +9,7 @@ import { join, relative } from "path"
 
 const FunctionNameRegex = /(name: "\$?(\w+)"),?/m
 const FunctionCategoryRegex = /\r?\n(.*)(category: "\$?(\w+)"),?/m
-const ArgEnumRegex = /(?:enum: +(\w+),?|Arg\.(?:\w+)Enum\([\r\n\t ]?(\w+))/gim
+const ArgEnumRegex = /(?:enum: +(\w+),?|Arg\.(?:\w+)Enum\([\r\n\t ]*(\w+))/gim
 const OutputRegex = /output:(array(<[A-Za-z.]+>)?\((\w+)?\)|(\w+)|ArgType.(\w+)|\[((array(<[A-Za-z.]+>)?\(\w*\)|\w+|ArgType\.\w+),?)+\]),/im
 
 function getOutputValues(fn: INativeFunction<IArg[]>, txt: string, enums: Record<string, string[]>) {
