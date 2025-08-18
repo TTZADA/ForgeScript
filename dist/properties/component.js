@@ -8,6 +8,7 @@ const discord_js_1 = require("discord.js");
 const defineProperties_1 = __importDefault(require("../functions/defineProperties"));
 var ComponentProperty;
 (function (ComponentProperty) {
+    ComponentProperty["id"] = "id";
     ComponentProperty["type"] = "type";
     ComponentProperty["customID"] = "customID";
     ComponentProperty["label"] = "label";
@@ -22,8 +23,20 @@ var ComponentProperty;
     ComponentProperty["emoji"] = "emoji";
     ComponentProperty["optionDescriptions"] = "optionDescriptions";
     ComponentProperty["optionValues"] = "optionValues";
+    ComponentProperty["content"] = "content";
+    ComponentProperty["accentColor"] = "accentColor";
+    ComponentProperty["spoiler"] = "spoiler";
+    ComponentProperty["divider"] = "divider";
+    ComponentProperty["spacing"] = "spacing";
+    ComponentProperty["items"] = "items";
+    ComponentProperty["itemUrls"] = "itemUrls";
+    ComponentProperty["fileUrl"] = "fileUrl";
+    ComponentProperty["accessory"] = "accessory";
+    ComponentProperty["components"] = "components";
+    ComponentProperty["thumbnailUrl"] = "thumbnailUrl";
 })(ComponentProperty || (exports.ComponentProperty = ComponentProperty = {}));
 exports.ComponentProperties = (0, defineProperties_1.default)({
+    id: (i) => i?.id,
     type: (i) => discord_js_1.ComponentType[i?.type],
     customID: (i) => (i && "customId" in i ? i.customId : null),
     emoji: (i) => i && "emoji" in i
@@ -42,5 +55,16 @@ exports.ComponentProperties = (0, defineProperties_1.default)({
     optionDescriptions: (i, sep) => i && "options" in i ? i.options.map((x) => x.description).join(sep ?? ", ") : null,
     optionValues: (i, sep) => (i && "options" in i ? i.options.map((x) => x.value).join(sep ?? ", ") : null),
     options: (i) => (i && "options" in i ? JSON.stringify(i.options, undefined, 4) : null),
+    content: (i) => (i && "content" in i ? i.content : null),
+    accentColor: (i) => (i && "hexAccentColor" in i ? i.hexAccentColor : null),
+    spoiler: (i) => (i && "spoiler" in i ? i.spoiler : null),
+    divider: (i) => (i && "divider" in i ? i.divider : null),
+    spacing: (i) => (i && "spacing" in i ? discord_js_1.SeparatorSpacingSize[i.spacing] : null),
+    items: (i) => (i && "items" in i ? JSON.stringify(i.items, undefined, 4) : null),
+    itemUrls: (i, sep) => (i && "items" in i ? i.items.map((x) => x.media.url).join(sep ?? ", ") : null),
+    fileUrl: (i) => (i && "file" in i ? i.file.url : null),
+    accessory: (i) => (i && "accessory" in i ? JSON.stringify(i.accessory, undefined, 4) : null),
+    components: (i) => (i && "components" in i ? JSON.stringify(i.components, undefined, 4) : null),
+    thumbnailUrl: (i) => (i instanceof discord_js_1.ThumbnailComponent ? i.media.url : null),
 });
 //# sourceMappingURL=component.js.map
