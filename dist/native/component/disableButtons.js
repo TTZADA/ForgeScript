@@ -21,14 +21,18 @@ exports.default = new structures_1.NativeFunction({
     execute(ctx, [index]) {
         const data = ctx.container.components;
         const components = Number.isFinite(index) ? new Array(data[index]) : data;
+        ctx.container.actionRow?.components.forEach((x) => {
+            if (x instanceof discord_js_1.ButtonBuilder)
+                x.setDisabled(true);
+        });
         for (let i = 0, len = components.length; i < len; i++) {
             const row = components[i];
-            if (!("components" in row))
+            if (!(row instanceof discord_js_1.ActionRowBuilder))
                 continue;
             const actionRow = new discord_js_1.ActionRowBuilder();
-            row?.components.forEach(component => {
-                if (component instanceof discord_js_1.ButtonBuilder)
-                    actionRow.addComponents(component.setDisabled(true));
+            row?.components.forEach((x) => {
+                if (x instanceof discord_js_1.ButtonBuilder)
+                    actionRow.addComponents(x.setDisabled(true));
             });
         }
         return this.success();

@@ -4,6 +4,7 @@ const discord_js_1 = require("discord.js");
 const structures_1 = require("../../structures");
 exports.default = new structures_1.NativeFunction({
     name: "$addChannelSelectMenuTo",
+    version: "2.4.0",
     description: "Creates a channel select menu on a message",
     output: structures_1.ArgType.Boolean,
     brackets: true,

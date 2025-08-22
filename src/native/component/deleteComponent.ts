@@ -1,3 +1,4 @@
+import { ActionRowBuilder } from "discord.js"
 import { ArgType, NativeFunction, Return } from "../../structures"
 
 export default new NativeFunction({
@@ -16,9 +17,16 @@ export default new NativeFunction({
     ],
     unwrap: true,
     execute(ctx, [id]) {
+        const row = ctx.container.actionRow
+        const n = row?.components.findIndex((x) => "custom_id" in x.data && x.data.custom_id === id)
+        if (n != -1) {
+            if (row?.components.length === 1) delete ctx.container.actionRow
+            else ctx.container.actionRow?.components.splice(n!, 1)
+        }
+
         for (let i = 0, len = ctx.container.components.length; i < len; i++) {
             const comp = ctx.container.components[i]
-            if (!("components" in comp)) continue
+            if (!(comp instanceof ActionRowBuilder)) continue
             
             const index = comp.components.findIndex((x) => "custom_id" in x.data && x.data.custom_id === id)
             if (index !== -1) {

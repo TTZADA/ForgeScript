@@ -10,10 +10,13 @@ exports.default = new structures_1.NativeFunction({
     unwrap: false,
     execute(ctx) {
         const components = ctx.container.components;
-        components.forEach(row => {
+        ctx.container.actionRow?.components.forEach((x) => x.setDisabled(true));
+        for (let comp of components) {
+            if (!(comp instanceof discord_js_1.ActionRowBuilder))
+                continue;
             const actionRow = new discord_js_1.ActionRowBuilder();
-            row?.components.forEach(component => actionRow.addComponents(component.setDisabled(true)));
-        });
+            comp?.components.forEach((x) => actionRow.addComponents(x.setDisabled(true)));
+        }
         return this.success();
     },
 });

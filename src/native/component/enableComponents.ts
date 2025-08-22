@@ -1,4 +1,4 @@
-import { ActionRowBuilder, MessageActionRowComponentBuilder } from "discord.js"
+import { ActionRowBuilder } from "discord.js"
 import { ArgType, NativeFunction, Return } from "../../structures"
 
 export default new NativeFunction({
@@ -8,12 +8,14 @@ export default new NativeFunction({
     aliases: ["$enableAllComponents"],
     unwrap: false,
     execute(ctx) {
-        const components = ctx.container.components as ActionRowBuilder<MessageActionRowComponentBuilder>[]
+        const components = ctx.container.components
+        ctx.container.actionRow?.components.forEach((x) => x.setDisabled(false))
 
-        components.forEach(row => {
+        for (let comp of components) {
+            if (!(comp instanceof ActionRowBuilder)) continue
             const actionRow = new ActionRowBuilder()
-            row?.components.forEach(component => actionRow.addComponents(component.setDisabled(false)))
-        })
+            comp?.components.forEach((x) => actionRow.addComponents(x.setDisabled(false)))
+        }
 
         return this.success()
     },
