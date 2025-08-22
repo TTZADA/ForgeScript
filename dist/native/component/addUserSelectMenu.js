@@ -51,7 +51,7 @@ exports.default = new structures_1.NativeFunction({
     execute(ctx, [id, placeholder, min, max, disabled, users]) {
         const menu = new discord_js_1.UserSelectMenuBuilder()
             .setDefaultUsers(users)
-            .setDisabled(disabled ?? false)
+            .setDisabled(disabled || false)
             .setCustomId(id);
         if (placeholder)
             menu.setPlaceholder(placeholder);

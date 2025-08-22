@@ -50,7 +50,7 @@ exports.default = new structures_1.NativeFunction({
     execute(ctx, [id, placeholder, min, max, disabled, channels]) {
         const menu = new discord_js_1.ChannelSelectMenuBuilder()
             .setDefaultChannels(channels)
-            .setDisabled(disabled ?? false)
+            .setDisabled(disabled || false)
             .setCustomId(id);
         if (placeholder)
             menu.setPlaceholder(placeholder);

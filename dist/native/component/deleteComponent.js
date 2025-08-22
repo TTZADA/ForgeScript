@@ -4,7 +4,7 @@ const structures_1 = require("../../structures");
 exports.default = new structures_1.NativeFunction({
     name: "$deleteComponent",
     version: "1.0.0",
-    description: "Deletes a component with given custom id",
+    description: "Deletes a message component with given custom id",
     brackets: true,
     args: [
         {

@@ -1,11 +1,11 @@
-import { ActionRowBuilder, createComponentBuilder, UserSelectMenuBuilder } from "discord.js"
+import { ActionRowBuilder, ChannelSelectMenuBuilder, createComponentBuilder } from "discord.js"
 import { ArgType, NativeFunction } from "../../structures"
 
 export default new NativeFunction({
-    name: "$addUserSelectMenuTo",
-    version: "1.5.0",
+    name: "$addChannelSelectMenuTo",
+    version: "2.4.0",
+    description: "Creates a channel select menu on a message",
     output: ArgType.Boolean,
-    description: "Creates a user select menu on a message",
     brackets: true,
     unwrap: true,
     args: [
@@ -57,15 +57,15 @@ export default new NativeFunction({
             type: ArgType.Boolean
         },
         {
-            name: "default users",
+            name: "default channels",
             rest: true,
             type: ArgType.String,
-            description: "The default selected users to use",
+            description: "The default selected channels to use",
         }
     ],
-    async execute(ctx, [ , m, id, placeholder, min, max, disabled, users ]) {
-        const menu = new UserSelectMenuBuilder()
-            .setDefaultUsers(users)
+    async execute(ctx, [, m, id, placeholder, min, max, disabled, channels]) {
+        const menu = new ChannelSelectMenuBuilder()
+            .setDefaultChannels(channels)
             .setDisabled(disabled || false)
             .setCustomId(id)
             

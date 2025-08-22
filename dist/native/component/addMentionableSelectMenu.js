@@ -40,12 +40,24 @@ exports.default = new structures_1.NativeFunction({
             rest: false,
             required: false,
             type: structures_1.ArgType.Boolean
+        },
+        {
+            name: "default roles/users",
+            rest: true,
+            type: structures_1.ArgType.RoleOrUser,
+            description: "The default selected roles or users to use",
         }
     ],
-    execute(ctx, [id, placeholder, min, max, disabled]) {
+    execute(ctx, [id, placeholder, min, max, disabled, defaults]) {
         const menu = new discord_js_1.MentionableSelectMenuBuilder()
-            .setDisabled(disabled ?? false)
-            .setCustomId(id);
+            .setDisabled(disabled || false)
+            .setCustomId(id)
+            .setDefaultValues(defaults.map(x => {
+            return {
+                id: x.id,
+                type: x instanceof discord_js_1.User ? discord_js_1.SelectMenuDefaultValueType.User : discord_js_1.SelectMenuDefaultValueType.Role
+            };
+        }));
         if (placeholder)
             menu.setPlaceholder(placeholder);
         if (min)

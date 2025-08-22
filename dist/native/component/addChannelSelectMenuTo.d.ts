@@ -4,7 +4,14 @@ declare const _default: NativeFunction<[{
     description: string;
     rest: false;
     required: true;
-    type: ArgType.String;
+    type: ArgType.TextChannel;
+}, {
+    name: string;
+    description: string;
+    rest: false;
+    required: true;
+    type: ArgType.Message;
+    pointer: number;
 }, {
     name: string;
     description: string;
@@ -19,23 +26,24 @@ declare const _default: NativeFunction<[{
 }, {
     name: string;
     description: string;
+    rest: false;
+    type: ArgType.Number;
+}, {
+    name: string;
+    description: string;
+    rest: false;
+    type: ArgType.Number;
+}, {
+    name: string;
+    description: string;
+    rest: false;
+    required: false;
     type: ArgType.Boolean;
-    rest: false;
-}, {
-    name: string;
-    description: string;
-    rest: false;
-    type: ArgType.Number;
-}, {
-    name: string;
-    description: string;
-    rest: false;
-    type: ArgType.Number;
 }, {
     name: string;
     rest: true;
-    type: ArgType.RoleOrUser;
+    type: ArgType.String;
     description: string;
 }], true>;
 export default _default;
-//# sourceMappingURL=editMentionableSelectMenu.d.ts.map
+//# sourceMappingURL=addChannelSelectMenuTo.d.ts.map

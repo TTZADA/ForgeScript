@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const discord_js_1 = require("discord.js");
 const structures_1 = require("../../structures");
+const enum_1 = require("../../functions/enum");
 exports.default = new structures_1.NativeFunction({
     name: "$addButton",
     version: "1.0.0",
@@ -45,6 +46,7 @@ exports.default = new structures_1.NativeFunction({
         },
     ],
     execute(ctx, [id, label, style, emoji, disabled]) {
+        style = (0, enum_1.resolveNumericEnum)(discord_js_1.ButtonStyle, style);
         const btn = new discord_js_1.ButtonBuilder()
             .setDisabled(disabled || false)
             .setStyle(style);

@@ -49,15 +49,12 @@ export default new NativeFunction({
     execute(ctx, [ id, placeholder, min, max, disabled, channels ]) {
         const menu = new ChannelSelectMenuBuilder()
             .setDefaultChannels(channels)
-            .setDisabled(disabled ?? false)
+            .setDisabled(disabled || false)
             .setCustomId(id)
             
-        if (placeholder)
-            menu.setPlaceholder(placeholder)
-        if (min)
-            menu.setMinValues(min)
-        if (max)
-            menu.setMaxValues(max)
+        if (placeholder) menu.setPlaceholder(placeholder)
+        if (min) menu.setMinValues(min)
+        if (max) menu.setMaxValues(max)
 
         ctx.container.actionRow?.addComponents(menu)
         return this.success()

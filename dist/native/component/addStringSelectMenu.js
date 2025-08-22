@@ -5,7 +5,7 @@ const structures_1 = require("../../structures");
 exports.default = new structures_1.NativeFunction({
     name: "$addStringSelectMenu",
     version: "1.0.0",
-    description: "Adds a string select menu",
+    description: "Creates a string select menu",
     unwrap: true,
     brackets: true,
     args: [

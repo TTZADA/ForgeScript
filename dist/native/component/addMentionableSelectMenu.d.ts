@@ -26,6 +26,11 @@ declare const _default: NativeFunction<[{
     rest: false;
     required: false;
     type: ArgType.Boolean;
+}, {
+    name: string;
+    rest: true;
+    type: ArgType.RoleOrUser;
+    description: string;
 }], true>;
 export default _default;
 //# sourceMappingURL=addMentionableSelectMenu.d.ts.map

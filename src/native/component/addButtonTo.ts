@@ -1,5 +1,6 @@
-import { ActionRow, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageActionRowComponent } from "discord.js"
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, createComponentBuilder } from "discord.js"
 import { ArgType, NativeFunction, Return } from "../../structures"
+import { resolveNumericEnum } from "../../functions/enum"
 
 export default new NativeFunction({
     name: "$addButtonTo",
@@ -60,6 +61,8 @@ export default new NativeFunction({
     ],
     output: ArgType.Boolean,
     async execute(ctx, [, m, id, label, style, emoji, disabled]) {
+        style = resolveNumericEnum(ButtonStyle, style)
+
         const btn = new ButtonBuilder()
             .setDisabled(disabled || false)
             .setStyle(style)
@@ -73,11 +76,12 @@ export default new NativeFunction({
             if (emoji) btn.setEmoji(emoji)
         }
 
-        const components = m.components.map(x => ActionRowBuilder.from(x as ActionRow<MessageActionRowComponent>))
-        components.at(-1)?.addComponents(btn)
+        const components = m.components.map(x => createComponentBuilder(x.toJSON()))
+        const comp = components.at(-1)
+        if (comp instanceof ActionRowBuilder) comp.addComponents(btn)
 
         return this.success(
-            !!(await m.edit({ components: components as ActionRowBuilder<ButtonBuilder>[] }).catch(ctx.noop))
+            !!(await m.edit({ components: components.map(x => x.toJSON()) }).catch(ctx.noop))
         )
     },
 })

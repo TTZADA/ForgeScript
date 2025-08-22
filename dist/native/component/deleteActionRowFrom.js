@@ -2,11 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const discord_js_1 = require("discord.js");
 const structures_1 = require("../../structures");
-const lodash_1 = require("lodash");
 exports.default = new structures_1.NativeFunction({
     name: "$deleteActionRowFrom",
     version: "1.5.0",
-    description: "Deletes an action row at given index",
+    description: "Deletes an action row or top level component at given index",
     brackets: true,
     args: [
         {
@@ -35,9 +34,9 @@ exports.default = new structures_1.NativeFunction({
     output: structures_1.ArgType.Boolean,
     unwrap: true,
     async execute(ctx, [, m, index]) {
-        const components = m.components.map(x => discord_js_1.ActionRowBuilder.from(x));
+        const components = m.components.map(x => (0, discord_js_1.createComponentBuilder)(x.toJSON()));
         components.splice(index, 1);
-        return this.success(!!(await m.edit({ components: components }).catch(lodash_1.noop)));
+        return this.success(!!(await m.edit({ components: components.map(x => x.toJSON()) }).catch(ctx.noop)));
     },
 });
 //# sourceMappingURL=deleteActionRowFrom.js.map

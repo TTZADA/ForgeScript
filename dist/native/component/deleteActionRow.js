@@ -4,7 +4,7 @@ const structures_1 = require("../../structures");
 exports.default = new structures_1.NativeFunction({
     name: "$deleteActionRow",
     version: "1.0.0",
-    description: "Deletes an action row at given index",
+    description: "Deletes an action row or top level component at given index",
     brackets: true,
     args: [
         {

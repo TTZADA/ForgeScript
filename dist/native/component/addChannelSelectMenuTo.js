@@ -3,12 +3,27 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const discord_js_1 = require("discord.js");
 const structures_1 = require("../../structures");
 exports.default = new structures_1.NativeFunction({
-    name: "$addRoleSelectMenu",
-    version: "1.3.0",
-    description: "Creates a role select menu",
+    name: "$addChannelSelectMenuTo",
+    description: "Creates a channel select menu on a message",
+    output: structures_1.ArgType.Boolean,
     brackets: true,
     unwrap: true,
     args: [
+        {
+            name: "channel ID",
+            description: "The channel id to pull message from",
+            rest: false,
+            required: true,
+            type: structures_1.ArgType.TextChannel
+        },
+        {
+            name: "message ID",
+            description: "The message to add select menu to",
+            rest: false,
+            required: true,
+            type: structures_1.ArgType.Message,
+            pointer: 0
+        },
         {
             name: "custom ID",
             description: "The custom id for this menu",
@@ -42,15 +57,15 @@ exports.default = new structures_1.NativeFunction({
             type: structures_1.ArgType.Boolean
         },
         {
-            name: "default roles",
+            name: "default channels",
             rest: true,
             type: structures_1.ArgType.String,
-            description: "The default selected roles to use",
+            description: "The default selected channels to use",
         }
     ],
-    execute(ctx, [id, placeholder, min, max, disabled, roles]) {
-        const menu = new discord_js_1.RoleSelectMenuBuilder()
-            .setDefaultRoles(roles)
+    async execute(ctx, [, m, id, placeholder, min, max, disabled, channels]) {
+        const menu = new discord_js_1.ChannelSelectMenuBuilder()
+            .setDefaultChannels(channels)
             .setDisabled(disabled || false)
             .setCustomId(id);
         if (placeholder)
@@ -59,8 +74,9 @@ exports.default = new structures_1.NativeFunction({
             menu.setMinValues(min);
         if (max)
             menu.setMaxValues(max);
-        ctx.container.actionRow?.addComponents(menu);
-        return this.success();
+        const components = m.components.map(x => (0, discord_js_1.createComponentBuilder)(x.toJSON()));
+        components.push(new discord_js_1.ActionRowBuilder().addComponents(menu));
+        return this.success(!!(await m.edit({ components: components.map(x => x.toJSON()) }).catch(ctx.noop)));
     }
 });
-//# sourceMappingURL=addRoleSelectMenu.js.map
+//# sourceMappingURL=addChannelSelectMenuTo.js.map

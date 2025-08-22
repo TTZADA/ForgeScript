@@ -1,11 +1,10 @@
-import { ActionRow, ActionRowBuilder, ButtonBuilder, MessageActionRowComponent } from "discord.js"
+import { createComponentBuilder } from "discord.js"
 import { ArgType, NativeFunction, Return } from "../../structures"
-import { noop } from "lodash"
 
 export default new NativeFunction({
     name: "$deleteActionRowFrom",
     version: "1.5.0",
-    description: "Deletes an action row at given index",
+    description: "Deletes an action row or top level component at given index",
     brackets: true,
     args: [
         {
@@ -34,10 +33,10 @@ export default new NativeFunction({
     output: ArgType.Boolean,
     unwrap: true,
     async execute(ctx, [, m, index]) {
-        const components = m.components.map(x => ActionRowBuilder.from(x as ActionRow<MessageActionRowComponent>))
+        const components = m.components.map(x => createComponentBuilder(x.toJSON()))
         components.splice(index, 1)
         return this.success(
-            !!(await m.edit({ components: components as ActionRowBuilder<ButtonBuilder>[] }).catch(noop))
+            !!(await m.edit({ components: components.map(x => x.toJSON()) }).catch(ctx.noop))
         )
     },
 })

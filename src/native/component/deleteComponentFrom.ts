@@ -4,7 +4,7 @@ import { ArgType, NativeFunction, Return } from "../../structures"
 export default new NativeFunction({
     name: "$deleteComponentFrom",
     version: "1.5.0",
-    description: "Deletes a component with given custom id from a message",
+    description: "Deletes a message component with given custom id from a message",
     brackets: true,
     args: [
         {

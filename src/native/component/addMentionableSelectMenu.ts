@@ -1,4 +1,4 @@
-import { MentionableSelectMenuBuilder } from "discord.js"
+import { MentionableSelectMenuBuilder, SelectMenuDefaultValueType, User } from "discord.js"
 import { ArgType, NativeFunction } from "../../structures"
 
 export default new NativeFunction({
@@ -39,20 +39,29 @@ export default new NativeFunction({
             rest: false,
             required: false,
             type: ArgType.Boolean
+        },
+        {
+            name: "default roles/users",
+            rest: true,
+            type: ArgType.RoleOrUser,
+            description: "The default selected roles or users to use",
         }
     ],
-    execute(ctx, [ id, placeholder, min, max, disabled ]) {
+    execute(ctx, [ id, placeholder, min, max, disabled, defaults ]) {
         const menu = new MentionableSelectMenuBuilder()
-            .setDisabled(disabled ?? false)
+            .setDisabled(disabled || false)
             .setCustomId(id)
-            
-        if (placeholder)
-            menu.setPlaceholder(placeholder)
-        if (min)
-            menu.setMinValues(min)
-        if (max)
-            menu.setMaxValues(max)
-        
+            .setDefaultValues(defaults.map(x => {
+                return {
+                    id: x.id,
+                    type: x instanceof User ? SelectMenuDefaultValueType.User : SelectMenuDefaultValueType.Role
+                }
+            }))
+
+        if (placeholder) menu.setPlaceholder(placeholder)
+        if (min) menu.setMinValues(min)
+        if (max) menu.setMaxValues(max)
+
         ctx.container.actionRow?.addComponents(menu)
         return this.success()
     }

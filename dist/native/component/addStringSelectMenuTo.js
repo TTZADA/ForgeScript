@@ -5,7 +5,7 @@ const structures_1 = require("../../structures");
 exports.default = new structures_1.NativeFunction({
     name: "$addStringSelectMenuTo",
     version: "1.5.0",
-    description: "Adds a string select menu to a message",
+    description: "Creates a string select menu on a message",
     unwrap: true,
     brackets: true,
     args: [
@@ -61,13 +61,13 @@ exports.default = new structures_1.NativeFunction({
         const menu = new discord_js_1.StringSelectMenuBuilder().setCustomId(id).setDisabled(disabled || false);
         if (placeholder)
             menu.setPlaceholder(placeholder);
-        if (min !== null)
+        if (min)
             menu.setMinValues(min);
-        if (max !== null)
+        if (max)
             menu.setMaxValues(max);
-        const components = m.components.map(x => discord_js_1.ActionRowBuilder.from(x));
-        components.at(-1)?.addComponents(menu);
-        return this.success(!!(await m.edit({ components: components }).catch(ctx.noop)));
+        const components = m.components.map(x => (0, discord_js_1.createComponentBuilder)(x.toJSON()));
+        components.push(new discord_js_1.ActionRowBuilder().addComponents(menu));
+        return this.success(!!(await m.edit({ components: components.map(x => x.toJSON()) }).catch(ctx.noop)));
     },
 });
 //# sourceMappingURL=addStringSelectMenuTo.js.map

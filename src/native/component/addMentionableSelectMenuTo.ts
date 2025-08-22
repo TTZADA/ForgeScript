@@ -1,10 +1,10 @@
-import { ActionRow, ActionRowBuilder, MentionableSelectMenuBuilder, MessageActionRowComponent, RoleSelectMenuBuilder, UserSelectMenuBuilder } from "discord.js"
+import { ActionRowBuilder, createComponentBuilder, MentionableSelectMenuBuilder, SelectMenuDefaultValueType, User } from "discord.js"
 import { ArgType, NativeFunction } from "../../structures"
 
 export default new NativeFunction({
     name: "$addMentionableSelectMenuTo",
     version: "1.5.0",
-    description: "Creates a mentionable select menu to a message",
+    description: "Creates a mentionable select menu on a message",
     brackets: true,
     output: ArgType.Boolean,
     unwrap: true,
@@ -55,25 +55,36 @@ export default new NativeFunction({
             rest: false,
             required: false,
             type: ArgType.Boolean
+        },
+        {
+            name: "default roles/users",
+            rest: true,
+            type: ArgType.RoleOrUser,
+            description: "The default selected roles or users to use",
+            pointer: 0,
+            pointerProperty: "guild"
         }
     ],
-    async execute(ctx, [ , m, id, placeholder, min, max, disabled ]) {
+    async execute(ctx, [, m, id, placeholder, min, max, disabled, defaults]) {
         const menu = new MentionableSelectMenuBuilder()
-            .setDisabled(disabled ?? false)
+            .setDisabled(disabled || false)
             .setCustomId(id)
-            
-        if (placeholder)
-            menu.setPlaceholder(placeholder)
-        if (min)
-            menu.setMinValues(min)
-        if (max)
-            menu.setMaxValues(max)
+            .setDefaultValues(defaults.map(x => {
+                return {
+                    id: x.id,
+                    type: x instanceof User ? SelectMenuDefaultValueType.User : SelectMenuDefaultValueType.Role
+                }
+            }))
 
-        const components = m.components.map(x => ActionRowBuilder.from(x as ActionRow<MessageActionRowComponent>))
-        components.at(-1)?.addComponents(menu)
-        
+        if (placeholder) menu.setPlaceholder(placeholder)
+        if (min) menu.setMinValues(min)
+        if (max) menu.setMaxValues(max)
+
+        const components = m.components.map(x => createComponentBuilder(x.toJSON()))
+        components.push(new ActionRowBuilder().addComponents(menu))
+
         return this.success(
-            !!(await m.edit({ components: components as ActionRowBuilder<MentionableSelectMenuBuilder>[] }).catch(ctx.noop))
+            !!(await m.edit({ components: components.map(x => x.toJSON()) }).catch(ctx.noop))
         )
     }
 })

@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const discord_js_1 = require("discord.js");
 const structures_1 = require("../../structures");
+const enum_1 = require("../../functions/enum");
 exports.default = new structures_1.NativeFunction({
     name: "$editButtonOf",
     version: "1.5.0",
@@ -75,19 +76,20 @@ exports.default = new structures_1.NativeFunction({
         const btn = components[rowIndex].components.find((x) => "custom_id" in x.data && x.data.custom_id === oldId);
         if (!btn)
             return this.success();
+        style = (0, enum_1.resolveNumericEnum)(discord_js_1.ButtonStyle, style);
         // @ts-ignore
-        btn.setCustomId(id || btn.data.custom_id)
-            .setDisabled(disabled || btn.data.disabled)
-            .setStyle(style || btn.data.style)
-            // @ts-ignore
-            .setLabel(label || btn.data.label || "");
-        // @ts-ignore
-        if (style === discord_js_1.ButtonStyle.Link)
-            btn.setURL(id || btn.data.custom_id);
-        else if (style === discord_js_1.ButtonStyle.Premium)
-            btn.setSKUId(id);
+        btn.setLabel(label || btn.data.label)
+            .setStyle(style);
         if (emoji)
             btn.setEmoji(emoji);
+        if (typeof disabled === "boolean")
+            btn.setDisabled(disabled);
+        if (style === discord_js_1.ButtonStyle.Link)
+            btn.setURL(id);
+        else if (style === discord_js_1.ButtonStyle.Premium)
+            btn.setSKUId(id);
+        else
+            btn.setCustomId(id);
         return this.success(!!(await m.edit({ components: components }).catch(ctx.noop)));
     },
 });

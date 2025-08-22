@@ -1,4 +1,4 @@
-import { ActionRowBuilder, ContainerBuilder, MentionableSelectMenuBuilder } from "discord.js"
+import { ActionRowBuilder, ContainerBuilder, MentionableSelectMenuBuilder, SelectMenuDefaultValueType, User } from "discord.js"
 import { ArgType, NativeFunction } from "../../structures"
 import { buildComponent } from "../../functions/components"
 
@@ -62,9 +62,17 @@ export default new NativeFunction({
             rest: false,
             type: ArgType.Number,
         },
+        {
+            name: "default roles/users",
+            rest: true,
+            type: ArgType.RoleOrUser,
+            description: "The default selected roles or users to use",
+            pointer: 0,
+            pointerProperty: "guild"
+        }
     ],
     output: ArgType.Boolean,
-    async execute(ctx, [, m, old, id, placeholder, disabled, min, max]) {
+    async execute(ctx, [, m, old, id, placeholder, disabled, min, max, defaults]) {
         const components = m.components.map((x) => buildComponent(x))
 
         outer:
@@ -86,6 +94,14 @@ export default new NativeFunction({
                     if (typeof disabled === "boolean") menu.setDisabled(disabled)
                     if (typeof min === "number") menu.setMinValues(min)
                     if (typeof max === "number") menu.setMaxValues(max)
+                    if (defaults.length) {
+                        menu.setDefaultValues(defaults.filter(Boolean).map(x => {
+                            return {
+                                id: x.id,
+                                type: x instanceof User ? SelectMenuDefaultValueType.User : SelectMenuDefaultValueType.Role
+                            }
+                        }))
+                    }
                     
                     if (comp instanceof ContainerBuilder) comp.spliceComponents(n, 1, new ActionRowBuilder().addComponents(menu))
                     

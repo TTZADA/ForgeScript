@@ -48,8 +48,14 @@ exports.default = new structures_1.NativeFunction({
             rest: false,
             type: structures_1.ArgType.Number,
         },
+        {
+            name: "default roles/users",
+            rest: true,
+            type: structures_1.ArgType.RoleOrUser,
+            description: "The default selected roles or users to use",
+        }
     ],
-    execute(ctx, [old, id, placeholder, disabled, min, max]) {
+    execute(ctx, [old, id, placeholder, disabled, min, max, defaults]) {
         for (let i = 0, len = ctx.container.components.length; i < len; i++) {
             const comp = ctx.container.components[i];
             const comps = comp instanceof discord_js_1.ContainerBuilder
@@ -70,6 +76,14 @@ exports.default = new structures_1.NativeFunction({
                         menu.setMinValues(min);
                     if (typeof max === "number")
                         menu.setMaxValues(max);
+                    if (defaults.length) {
+                        menu.setDefaultValues(defaults.filter(Boolean).map(x => {
+                            return {
+                                id: x.id,
+                                type: x instanceof discord_js_1.User ? discord_js_1.SelectMenuDefaultValueType.User : discord_js_1.SelectMenuDefaultValueType.Role
+                            };
+                        }));
+                    }
                     if (comp instanceof discord_js_1.ContainerBuilder)
                         comp.spliceComponents(n, 1, new discord_js_1.ActionRowBuilder().addComponents(menu));
                     return this.success();
