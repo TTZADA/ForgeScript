@@ -1,0 +1,22 @@
+import { ArgType, NativeFunction, Return } from "../../structures"
+
+export default new NativeFunction({
+    name: "$userGuildEnabled",
+    version: "2.5.0",
+    description: "Returns whether the primary guild of a user is enabled",
+    unwrap: true,
+    brackets: false,
+    args: [
+        {
+            name: "user ID",
+            description: "The user to get its primary guild",
+            required: true,
+            rest: false,
+            type: ArgType.User,
+        },
+    ],
+    output: ArgType.Boolean,
+    execute(ctx, [user]) {
+        return this.success((user ?? ctx.user)?.primaryGuild?.identityEnabled)
+    },
+})

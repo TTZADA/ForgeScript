@@ -1,5 +1,4 @@
 import { ColorResolvable, PermissionFlagsBits, PermissionsString } from "discord.js"
-import noop from "../../functions/noop"
 import { ArgType, NativeFunction, Return } from "../../structures"
 
 export default new NativeFunction({
@@ -65,7 +64,7 @@ export default new NativeFunction({
     async execute(ctx, [guild, name, color, icon, hoist, mentionable, pos, perms]) {
         const created = await guild.roles
             .create({
-                color: (color as ColorResolvable) || undefined,
+                colors: !color ? undefined : { primaryColor: color as ColorResolvable },
                 icon: icon || undefined,
                 hoist: hoist || false,
                 mentionable: mentionable || false,

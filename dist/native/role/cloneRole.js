@@ -35,7 +35,7 @@ exports.default = new structures_1.NativeFunction({
         const created = await guild.roles
             .create({
             name: name || role.name,
-            color: role.color,
+            colors: role.colors,
             icon: role.icon,
             hoist: role.hoist,
             mentionable: role.mentionable,

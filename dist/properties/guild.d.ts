@@ -1,4 +1,4 @@
-import { Guild } from "discord.js";
+import { Guild, GuildPreview } from "discord.js";
 export declare enum GuildProperty {
     id = "id",
     ownerID = "ownerID",
@@ -19,8 +19,24 @@ export declare enum GuildProperty {
     emojis = "emojis",
     stickers = "stickers",
     boostLevel = "boostLevel",
+    discoverySplash = "discoverySplash",
     approximateMemberCount = "approximateMemberCount",
     approximatePresenceCount = "approximatePresenceCount"
 }
 export declare const GuildProperties: import("../functions/defineProperties").Properties<typeof GuildProperty, Guild>;
+export declare enum GuildPreviewProperty {
+    id = "id",
+    name = "name",
+    description = "description",
+    features = "features",
+    timestamp = "timestamp",
+    icon = "icon",
+    splash = "splash",
+    emojis = "emojis",
+    stickers = "stickers",
+    discoverySplash = "discoverySplash",
+    approximateMemberCount = "approximateMemberCount",
+    approximatePresenceCount = "approximatePresenceCount"
+}
+export declare const GuildPreviewProperties: import("../functions/defineProperties").Properties<typeof GuildPreviewProperty, GuildPreview>;
 //# sourceMappingURL=guild.d.ts.map

@@ -14,7 +14,6 @@ exports.default = new structures_1.NativeFunction({
         "$pinnedMessages"
     ],
     unwrap: true,
-    output: (0, array_1.default)(),
     args: [
         {
             name: "channel ID",
@@ -26,15 +25,16 @@ exports.default = new structures_1.NativeFunction({
         },
         {
             name: "separator",
-            description: "The separator to use for every message id",
+            description: "The separator to use for each message id",
             rest: false,
             type: structures_1.ArgType.String
         },
     ],
+    output: (0, array_1.default)(),
     async execute(ctx, [channel, sep]) {
         channel ??= ctx.channel;
-        const messages = await channel?.messages.fetchPinned().catch(ctx.noop);
-        return this.success(messages ? messages.map(msg => msg.id).join(sep ?? ", ") : null);
+        const pins = await channel?.messages.fetchPins().catch(ctx.noop);
+        return this.success(pins ? pins.items.map(pin => pin.message.id).join(sep ?? ", ") : null);
     },
 });
 //# sourceMappingURL=channelPinnedMessages.js.map

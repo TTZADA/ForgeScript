@@ -5,7 +5,7 @@ export function hex2int(hex: string) {
 }
 
 export function int2hex(int: number | string) {
-    return Number(int).toString(16)
+    return Number(int).toString(16).padStart(6, "0")
 }
 
 export function resolveColor(value: string | number) {

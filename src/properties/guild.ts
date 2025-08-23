@@ -1,4 +1,4 @@
-import { Guild } from "discord.js"
+import { Guild, GuildPreview } from "discord.js"
 import defineProperties from "../functions/defineProperties"
 
 export enum GuildProperty {
@@ -21,6 +21,7 @@ export enum GuildProperty {
     emojis = "emojis",
     stickers = "stickers",
     boostLevel = "boostLevel",
+    discoverySplash = "discoverySplash",
     approximateMemberCount = "approximateMemberCount",
     approximatePresenceCount = "approximatePresenceCount",
 }
@@ -47,4 +48,35 @@ export const GuildProperties = defineProperties<typeof GuildProperty, Guild>({
     memberCount: (i) => i?.memberCount,
     maximumMembers: (i) => i?.maximumMembers,
     approximatePresenceCount: (i) => i?.approximatePresenceCount,
+    discoverySplash: (i) => i?.discoverySplashURL(),
+})
+
+export enum GuildPreviewProperty {
+    id = "id",
+    name = "name",
+    description = "description",
+    features = "features",
+    timestamp = "timestamp",
+    icon = "icon",
+    splash = "splash",
+    emojis = "emojis",
+    stickers = "stickers",
+    discoverySplash = "discoverySplash",
+    approximateMemberCount = "approximateMemberCount",
+    approximatePresenceCount = "approximatePresenceCount",
+}
+
+export const GuildPreviewProperties = defineProperties<typeof GuildPreviewProperty, GuildPreview>({
+    description: (i) => i?.description,
+    features: (i, sep) => i?.features.join(sep || ", "),
+    id: (i) => i?.id,
+    name: (i) => i?.name,
+    icon: (i) => i?.iconURL(),
+    splash: (i) => i?.splashURL(),
+    emojis: (i, sep) => i?.emojis.map((x) => x.id).join(sep || ", "),
+    stickers: (i, sep) => i?.stickers.map((x) => x.id).join(sep || ", "),
+    timestamp: (i) => i?.createdTimestamp,
+    approximateMemberCount: (i) => i?.approximateMemberCount,
+    approximatePresenceCount: (i) => i?.approximatePresenceCount,
+    discoverySplash: (i) => i?.discoverySplashURL(),
 })

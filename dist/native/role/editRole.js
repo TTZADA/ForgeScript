@@ -24,19 +24,19 @@ exports.default = new structures_1.NativeFunction({
             required: true,
         },
         {
-            name: "role name",
+            name: "name",
             description: "The new role name, leave empty to not modify",
             rest: false,
             type: structures_1.ArgType.String,
         },
         {
-            name: "role color",
+            name: "color",
             description: "The new role color, leave empty to not modify",
             rest: false,
             type: structures_1.ArgType.String,
         },
         {
-            name: "role icon",
+            name: "icon",
             description: "The new role icon, leave empty to not modify",
             rest: false,
             type: structures_1.ArgType.String,
@@ -62,16 +62,15 @@ exports.default = new structures_1.NativeFunction({
     ],
     brackets: true,
     async execute(ctx, [, role, name, color, icon, hoist, mentionable, perms]) {
-        return this.success(!!(await role
-            .edit({
-            color: color || undefined,
+        const edit = await role.edit({
+            colors: !color ? undefined : { primaryColor: color },
             hoist: hoist || undefined,
             icon: icon || undefined,
             mentionable: mentionable || undefined,
             name: name || undefined,
             permissions: perms || undefined,
-        })
-            .catch(ctx.noop)));
+        }).catch(ctx.noop);
+        return this.success(!!edit);
     },
 });
 //# sourceMappingURL=editRole.js.map

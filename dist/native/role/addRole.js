@@ -65,7 +65,7 @@ exports.default = new structures_1.NativeFunction({
     async execute(ctx, [guild, name, color, icon, hoist, mentionable, pos, perms]) {
         const created = await guild.roles
             .create({
-            color: color || undefined,
+            colors: !color ? undefined : { primaryColor: color },
             icon: icon || undefined,
             hoist: hoist || false,
             mentionable: mentionable || false,

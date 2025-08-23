@@ -1,3 +1,4 @@
+import { RoleColorsResolvable } from "discord.js"
 import { ArgType, NativeFunction, Return } from "../../structures"
 
 export default new NativeFunction({
@@ -34,7 +35,7 @@ export default new NativeFunction({
         const created = await guild.roles
             .create({
                 name: name || role.name,
-                color: role.color,
+                colors: role.colors as RoleColorsResolvable,
                 icon: role.icon,
                 hoist: role.hoist,
                 mentionable: role.mentionable,

@@ -70,6 +70,7 @@ declare const _default: NativeFunction<[{
         readonly SendVoiceMessages: bigint;
         readonly SendPolls: bigint;
         readonly UseExternalApps: bigint;
+        readonly PinMessages: bigint;
     };
 }], true>;
 export default _default;

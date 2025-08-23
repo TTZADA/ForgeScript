@@ -1,4 +1,5 @@
 import { ArgType, NativeFunction, Return } from "../../structures"
+import { RoleColor } from "./roleColor"
 
 export default new NativeFunction({
     name: "$roleIntColor",
@@ -23,8 +24,16 @@ export default new NativeFunction({
             pointer: 0,
             required: true,
         },
+        {
+            name: "color",
+            description: "The role color to return",
+            rest: false,
+            type: ArgType.Enum,
+            enum: RoleColor
+        },
     ],
-    execute(ctx, [, role]) {
-        return this.success((role ?? ctx.role)?.color)
+    execute(ctx, [, role, color]) {
+        color ??= RoleColor.Primary
+        return this.success((role ?? ctx.role)?.colors[color])
     },
 })

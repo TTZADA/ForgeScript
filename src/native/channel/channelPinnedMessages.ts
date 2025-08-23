@@ -11,7 +11,6 @@ export default new NativeFunction({
         "$pinnedMessages"
     ],
     unwrap: true,
-    output: array<ArgType.Message>(),
     args: [
         {
             name: "channel ID",
@@ -23,14 +22,15 @@ export default new NativeFunction({
         },
         {
             name: "separator",
-            description: "The separator to use for every message id",
+            description: "The separator to use for each message id",
             rest: false,
             type: ArgType.String
         },
     ],
+    output: array<ArgType.Message>(),
     async execute(ctx, [ channel, sep ]) {
         channel ??= ctx.channel!
-        const messages = await (channel as TextBasedChannel)?.messages.fetchPinned().catch(ctx.noop)
-        return this.success(messages ? messages.map(msg => msg.id).join(sep ?? ", ") : null)
+        const pins = await (channel as TextBasedChannel)?.messages.fetchPins().catch(ctx.noop)
+        return this.success(pins ? pins.items.map(pin => pin.message.id).join(sep ?? ", ") : null)
     },
 })

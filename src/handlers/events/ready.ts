@@ -7,6 +7,7 @@ export default new DiscordEventHandler({
     name: "ready",
     version: "1.0.1",
     description: "This event is fired when the bot becomes ready",
+    deprecated: true,
     listener: async function () {
         const commands = this.commands.get("ready")
         if (commands.length) {

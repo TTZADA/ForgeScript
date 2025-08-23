@@ -7,7 +7,7 @@ function hex2int(hex) {
 }
 exports.hex2int = hex2int;
 function int2hex(int) {
-    return Number(int).toString(16);
+    return Number(int).toString(16).padStart(6, "0");
 }
 exports.int2hex = int2hex;
 function resolveColor(value) {

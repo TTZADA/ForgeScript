@@ -7,6 +7,7 @@ export interface IEvent<Events, T extends keyof Events> {
     listener: (this: ForgeClient, ...args: AssertArgs<Events[T]>) => Promise<void> | void;
     version?: string;
     intents?: GatewayIntentsString[];
+    deprecated?: boolean;
 }
 export declare class BaseEventHandler<Events = Record<string, unknown[]>, T extends keyof Events = keyof Events> {
     readonly data: IEvent<Events, T>;
