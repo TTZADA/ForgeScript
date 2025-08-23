@@ -1,1 +1,1 @@
-{"version":3,"file":"fetchGuildPreview.d.ts","sourceRoot":"","sources":["../../../src/native/guild/fetchGuildPreview.ts"],"names":[],"mappings":"AAAA,OAAO,EAA0B,oBAAoB,EAAE,MAAM,wBAAwB,CAAA;AACrF,OAAO,EAAE,OAAO,EAAE,cAAc,EAAU,MAAM,kBAAkB,CAAA;;;;;;;;;;;;;;;;;;;AAElE,wBAoCE"}
+{"version":3,"file":"fetchGuildPreview.d.ts","sourceRoot":"","sources":["../../../src/native/guild/fetchGuildPreview.ts"],"names":[],"mappings":"AAAA,OAAO,EAA0B,oBAAoB,EAAE,MAAM,wBAAwB,CAAA;AACrF,OAAO,EAAE,OAAO,EAAE,cAAc,EAAU,MAAM,kBAAkB,CAAA;;;;;;;;;;;;;;;;;;;AAElE,wBAqCE"}

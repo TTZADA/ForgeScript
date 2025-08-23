@@ -4,6 +4,7 @@ const guild_1 = require("../../properties/guild");
 const structures_1 = require("../../structures");
 exports.default = new structures_1.NativeFunction({
     name: "$fetchGuildPreview",
+    version: "2.5.0",
     description: "Returns the preview of a guild",
     brackets: false,
     unwrap: true,
