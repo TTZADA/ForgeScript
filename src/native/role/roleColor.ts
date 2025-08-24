@@ -39,8 +39,7 @@ export default new NativeFunction({
         },
     ],
     execute(ctx, [, role, color]) {
-        color ??= RoleColor.Primary
-        const int = (role ?? ctx.role)?.colors[color]
+        const int = (role ?? ctx.role)?.colors[color || RoleColor.Primary]
         return this.success(int ? "#" + int2hex(int) : null)
     },
 })

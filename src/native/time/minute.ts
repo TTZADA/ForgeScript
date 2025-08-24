@@ -18,7 +18,7 @@ export default new NativeFunction({
     ],
     output: ArgType.Number,
     execute: async function(ctx, [format]) {
-        format ??= BasicTimeFormat.Numeric
+        format ||= BasicTimeFormat.Numeric
         const minute = new Date().toLocaleString("en-US", { minute: format, timeZone: ctx.timezone, calendar: ctx.calendar })
         return this.success(format === BasicTimeFormat.TwoDigit ? minute.padStart(2, "0") : minute)
     }

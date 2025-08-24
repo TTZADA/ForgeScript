@@ -5,9 +5,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RoleProperties = exports.RoleProperty = void 0;
 const defineProperties_1 = __importDefault(require("../functions/defineProperties"));
+const hex_1 = require("../functions/hex");
 var RoleProperty;
 (function (RoleProperty) {
-    RoleProperty["timestamp"] = "timestamp";
     RoleProperty["id"] = "id";
     RoleProperty["name"] = "name";
     RoleProperty["icon"] = "icon";
@@ -17,9 +17,13 @@ var RoleProperty;
     RoleProperty["mentionable"] = "mentionable";
     RoleProperty["rawPosition"] = "rawPosition";
     RoleProperty["position"] = "position";
+    RoleProperty["timestamp"] = "timestamp";
     RoleProperty["permissions"] = "permissions";
     RoleProperty["tags"] = "tags";
     RoleProperty["members"] = "members";
+    RoleProperty["unicodeEmoji"] = "unicodeEmoji";
+    RoleProperty["secondaryColor"] = "secondaryColor";
+    RoleProperty["tertiaryColor"] = "tertiaryColor";
 })(RoleProperty || (exports.RoleProperty = RoleProperty = {}));
 exports.RoleProperties = (0, defineProperties_1.default)({
     timestamp: (i) => i?.createdTimestamp,
@@ -35,5 +39,8 @@ exports.RoleProperties = (0, defineProperties_1.default)({
     rawPosition: (i) => i?.rawPosition,
     permissions: (i, sep) => i?.permissions.toArray().join(sep || ", "),
     tags: (i, sep) => Object.keys(i?.tags ?? {}).join(sep || ", "),
+    unicodeEmoji: (i) => i?.unicodeEmoji,
+    secondaryColor: (i) => i?.colors.secondaryColor ? "#" + (0, hex_1.int2hex)(i?.colors.secondaryColor) : null,
+    tertiaryColor: (i) => i?.colors.tertiaryColor ? "#" + (0, hex_1.int2hex)(i?.colors.tertiaryColor) : null,
 });
 //# sourceMappingURL=role.js.map

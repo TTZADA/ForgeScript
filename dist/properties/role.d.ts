@@ -1,6 +1,5 @@
 import { Role } from "discord.js";
 export declare enum RoleProperty {
-    timestamp = "timestamp",
     id = "id",
     name = "name",
     icon = "icon",
@@ -10,9 +9,13 @@ export declare enum RoleProperty {
     mentionable = "mentionable",
     rawPosition = "rawPosition",
     position = "position",
+    timestamp = "timestamp",
     permissions = "permissions",
     tags = "tags",
-    members = "members"
+    members = "members",
+    unicodeEmoji = "unicodeEmoji",
+    secondaryColor = "secondaryColor",
+    tertiaryColor = "tertiaryColor"
 }
 export declare const RoleProperties: import("../functions/defineProperties").Properties<typeof RoleProperty, Role>;
 //# sourceMappingURL=role.d.ts.map

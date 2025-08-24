@@ -19,7 +19,7 @@ exports.default = new structures_1.NativeFunction({
     ],
     output: structures_1.ArgType.Number,
     execute: async function (ctx, [format]) {
-        format ??= hour_1.BasicTimeFormat.Numeric;
+        format ||= hour_1.BasicTimeFormat.Numeric;
         const second = new Date().toLocaleString("en-US", { second: format, timeZone: ctx.timezone, calendar: ctx.calendar });
         return this.success(format === hour_1.BasicTimeFormat.TwoDigit ? second.padStart(2, "0") : second);
     }

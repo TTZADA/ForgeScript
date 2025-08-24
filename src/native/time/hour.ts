@@ -22,7 +22,7 @@ export default new NativeFunction({
     ],
     output: ArgType.Number,
     execute: async function(ctx, [format]) {
-        format ??= BasicTimeFormat.Numeric
+        format ||= BasicTimeFormat.Numeric
         const hour = new Date().toLocaleString("en-US", { hour: format, hour12: false, timeZone: ctx.timezone, calendar: ctx.calendar })
         return this.success(format === BasicTimeFormat.Numeric ? parseInt(hour, 10).toString() : hour)
     }

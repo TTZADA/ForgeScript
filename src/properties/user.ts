@@ -1,4 +1,4 @@
-import { Channel, ChannelType, Collection, GuildMember, User } from "discord.js"
+import { User } from "discord.js"
 import defineProperties from "../functions/defineProperties"
 
 export enum UserProperty {
@@ -12,6 +12,11 @@ export enum UserProperty {
     banner = "banner",
     timestamp = "timestamp",
     dmChannelID = "dmChannelID",
+    avatarDecoration = "avatarDecoration",
+    primaryGuildTag = "primaryGuildTag",
+    primaryGuildBadge = "primaryGuildBadge",
+    primaryGuildEnabled = "primaryGuildEnabled",
+    primaryGuildID = "primaryGuildID",
 }
 
 export const UserProperties = defineProperties<typeof UserProperty, User>({
@@ -25,4 +30,9 @@ export const UserProperties = defineProperties<typeof UserProperty, User>({
     accentColor: (i) => i?.hexAccentColor,
     timestamp: (i) => i?.createdTimestamp,
     dmChannelID: (i) => i?.dmChannel?.id,
+    avatarDecoration: (i) => i?.avatarDecorationURL(),
+    primaryGuildTag: (i) => i?.primaryGuild?.tag,
+    primaryGuildBadge: (i) => i?.guildTagBadgeURL(),
+    primaryGuildEnabled: (i) => i?.primaryGuild?.identityEnabled,
+    primaryGuildID: (i) => i?.primaryGuild?.identityGuildId
 })

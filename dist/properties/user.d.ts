@@ -9,7 +9,12 @@ export declare enum UserProperty {
     accentColor = "accentColor",
     banner = "banner",
     timestamp = "timestamp",
-    dmChannelID = "dmChannelID"
+    dmChannelID = "dmChannelID",
+    avatarDecoration = "avatarDecoration",
+    primaryGuildTag = "primaryGuildTag",
+    primaryGuildBadge = "primaryGuildBadge",
+    primaryGuildEnabled = "primaryGuildEnabled",
+    primaryGuildID = "primaryGuildID"
 }
 export declare const UserProperties: import("../functions/defineProperties").Properties<typeof UserProperty, User>;
 //# sourceMappingURL=user.d.ts.map

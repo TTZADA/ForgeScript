@@ -1,1 +1,1 @@
-{"version":3,"file":"roleColor.d.ts","sourceRoot":"","sources":["../../../src/native/role/roleColor.ts"],"names":[],"mappings":"AACA,OAAO,EAAE,OAAO,EAAE,cAAc,EAAU,MAAM,kBAAkB,CAAA;AAElE,oBAAY,SAAS;IACjB,OAAO,iBAAiB;IACxB,SAAS,mBAAmB;IAC5B,QAAQ,kBAAkB;CAC7B;;;;;;;;;;;;;;;;;;;;;AAED,wBAoCE"}
+{"version":3,"file":"roleColor.d.ts","sourceRoot":"","sources":["../../../src/native/role/roleColor.ts"],"names":[],"mappings":"AACA,OAAO,EAAE,OAAO,EAAE,cAAc,EAAU,MAAM,kBAAkB,CAAA;AAElE,oBAAY,SAAS;IACjB,OAAO,iBAAiB;IACxB,SAAS,mBAAmB;IAC5B,QAAQ,kBAAkB;CAC7B;;;;;;;;;;;;;;;;;;;;;AAED,wBAmCE"}

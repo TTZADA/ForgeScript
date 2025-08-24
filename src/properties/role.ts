@@ -1,8 +1,8 @@
-import { Message, MessageType, Role } from "discord.js"
+import { Role } from "discord.js"
 import defineProperties from "../functions/defineProperties"
+import { int2hex } from "../functions/hex"
 
 export enum RoleProperty {
-    timestamp = "timestamp",
     id = "id",
     name = "name",
     icon = "icon",
@@ -12,9 +12,13 @@ export enum RoleProperty {
     mentionable = "mentionable",
     rawPosition = "rawPosition",
     position = "position",
+    timestamp = "timestamp",
     permissions = "permissions",
     tags = "tags",
     members = "members",
+    unicodeEmoji = "unicodeEmoji",
+    secondaryColor = "secondaryColor",
+    tertiaryColor = "tertiaryColor",
 }
 
 export const RoleProperties = defineProperties<typeof RoleProperty, Role>({
@@ -31,4 +35,7 @@ export const RoleProperties = defineProperties<typeof RoleProperty, Role>({
     rawPosition: (i) => i?.rawPosition,
     permissions: (i, sep) => i?.permissions.toArray().join(sep || ", "),
     tags: (i, sep) => Object.keys(i?.tags ?? {}).join(sep || ", "),
+    unicodeEmoji: (i) => i?.unicodeEmoji,
+    secondaryColor: (i) => i?.colors.secondaryColor ? "#" + int2hex(i?.colors.secondaryColor) : null,
+    tertiaryColor: (i) => i?.colors.tertiaryColor ? "#" + int2hex(i?.colors.tertiaryColor) : null,
 })

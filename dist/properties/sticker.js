@@ -8,9 +8,10 @@ const discord_js_1 = require("discord.js");
 const defineProperties_1 = __importDefault(require("../functions/defineProperties"));
 var StickerProperty;
 (function (StickerProperty) {
-    StickerProperty["guildID"] = "guildID";
-    StickerProperty["name"] = "name";
     StickerProperty["id"] = "id";
+    StickerProperty["name"] = "name";
+    StickerProperty["guildID"] = "guildID";
+    StickerProperty["authorID"] = "authorID";
     StickerProperty["timestamp"] = "timestamp";
     StickerProperty["url"] = "url";
     StickerProperty["format"] = "format";
@@ -22,6 +23,7 @@ var StickerProperty;
 })(StickerProperty || (exports.StickerProperty = StickerProperty = {}));
 exports.StickerProperties = (0, defineProperties_1.default)({
     guildID: (i) => i?.guild?.id,
+    authorID: (i) => i?.user?.id,
     id: (i) => i?.id,
     name: (i) => i?.name,
     url: (i) => i?.url,

@@ -3,12 +3,22 @@ import defineProperties from "../functions/defineProperties"
 
 export enum ChannelProperty {
     id = "id",
+    name = "name",
     type = "type",
     topic = "topic",
     bitrate = "bitrate",
     members = "members",
-    name = "name",
     timestamp = "timestamp",
+    nsfw = "nsfw",
+    flags = "flags",
+    parentID = "parentID",
+    position = "position",
+    rawPosition = "rawPosition",
+    slowmode = "slowmode",
+    appliedTags = "appliedTags",
+    availableTags = "availableTags",
+    archived = "archived",
+    locked = "locked",
 }
 
 export const ChannelProperties = defineProperties<typeof ChannelProperty, Channel>({
@@ -20,8 +30,18 @@ export const ChannelProperties = defineProperties<typeof ChannelProperty, Channe
         i && "members" in i
             ? ((i.members instanceof Collection ? i.members : i.members.cache) as Collection<string, GuildMember>)
                 .map((x) => x.id)
-                .join(sep || ", ")
+                .join(sep ?? ", ")
             : undefined,
     topic: (i) => (i && "topic" in i ? i.topic : undefined),
     type: (i) => ChannelType[i?.type!],
+    nsfw: (i) => (i && "nsfw" in i ? i.nsfw : undefined),
+    flags: (i, sep) => i?.flags?.toArray().join(sep ?? ", "),
+    parentID: (i) => (i && "parentId" in i ? i.parentId : undefined),
+    position: (i) => (i && "position" in i ? i.position : undefined),
+    rawPosition: (i) => (i && "rawPosition" in i ? i.rawPosition : undefined),
+    slowmode: (i) => (i && "rateLimitPerUser" in i ? i.rateLimitPerUser : undefined),
+    appliedTags: (i, sep) => (i && "appliedTags" in i ? i.appliedTags.join(sep ?? ", ") : undefined),
+    availableTags: (i, sep) => (i && "availableTags" in i ? i.availableTags.join(sep ?? ", ") : undefined),
+    archived: (i) => (i && "archived" in i ? i.archived : undefined),
+    locked: (i) => (i && "locked" in i ? i.locked : undefined),
 })

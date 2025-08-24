@@ -34,8 +34,7 @@ exports.default = new structures_1.NativeFunction({
         },
     ],
     execute(ctx, [, role, color]) {
-        color ??= roleColor_1.RoleColor.Primary;
-        return this.success((role ?? ctx.role)?.colors[color]);
+        return this.success((role ?? ctx.role)?.colors[color || roleColor_1.RoleColor.Primary]);
     },
 });
 //# sourceMappingURL=roleIntColor.js.map

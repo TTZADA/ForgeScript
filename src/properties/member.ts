@@ -26,6 +26,7 @@ export enum MemberProperty {
     boosting = "boosting",
     boostingSince = "boostingSince",
     permissions = "permissions",
+    avatarDecoration = "avatarDecoration",
 }
 
 export const MemberProperties = defineProperties<typeof MemberProperty, GuildMember | APIInteractionGuildMember>({
@@ -69,4 +70,5 @@ export const MemberProperties = defineProperties<typeof MemberProperty, GuildMem
     platform: (i, sep) => Object.keys((i as GuildMember)?.presence?.clientStatus ?? {}).join(sep || ", "),
     boosting: (i) => (i instanceof GuildMember ? i?.premiumSinceTimestamp : i?.premium_since) != null,
     boostingSince: (i) => i instanceof GuildMember ? i?.premiumSinceTimestamp ?? 0 : (i?.premium_since ? new Date(i.premium_since).getTime() : 0),
+    avatarDecoration: (i) => i instanceof GuildMember ? i.avatarDecorationURL() : (i?.avatar_decoration_data ? new CDN().avatarDecoration(i.avatar_decoration_data.asset) : null),
 })

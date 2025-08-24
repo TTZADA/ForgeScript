@@ -32,6 +32,7 @@ var MemberProperty;
     MemberProperty["boosting"] = "boosting";
     MemberProperty["boostingSince"] = "boostingSince";
     MemberProperty["permissions"] = "permissions";
+    MemberProperty["avatarDecoration"] = "avatarDecoration";
 })(MemberProperty || (exports.MemberProperty = MemberProperty = {}));
 exports.MemberProperties = (0, defineProperties_1.default)({
     timestamp: (i) => i instanceof discord_js_1.GuildMember ? i?.joinedTimestamp : (i?.joined_at ? new Date(i.joined_at).getTime() : null),
@@ -76,5 +77,6 @@ exports.MemberProperties = (0, defineProperties_1.default)({
     platform: (i, sep) => Object.keys(i?.presence?.clientStatus ?? {}).join(sep || ", "),
     boosting: (i) => (i instanceof discord_js_1.GuildMember ? i?.premiumSinceTimestamp : i?.premium_since) != null,
     boostingSince: (i) => i instanceof discord_js_1.GuildMember ? i?.premiumSinceTimestamp ?? 0 : (i?.premium_since ? new Date(i.premium_since).getTime() : 0),
+    avatarDecoration: (i) => i instanceof discord_js_1.GuildMember ? i.avatarDecorationURL() : (i?.avatar_decoration_data ? new discord_js_1.CDN().avatarDecoration(i.avatar_decoration_data.asset) : null),
 });
 //# sourceMappingURL=member.js.map

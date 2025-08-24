@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const structures_1 = require("../../structures");
 exports.default = new structures_1.NativeFunction({
     name: "$hasComponents",
+    version: "2.5.0",
     description: "Checks whether given message has components",
     brackets: false,
     unwrap: true,

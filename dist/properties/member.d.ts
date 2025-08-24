@@ -23,7 +23,8 @@ export declare enum MemberProperty {
     timestamp = "timestamp",
     boosting = "boosting",
     boostingSince = "boostingSince",
-    permissions = "permissions"
+    permissions = "permissions",
+    avatarDecoration = "avatarDecoration"
 }
 export declare const MemberProperties: import("../functions/defineProperties").Properties<typeof MemberProperty, GuildMember | APIInteractionGuildMember>;
 //# sourceMappingURL=member.d.ts.map

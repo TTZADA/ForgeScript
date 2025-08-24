@@ -1,6 +1,9 @@
 export declare enum BulkProperty {
     messages = "messages",
     contents = "contents",
+    timestamps = "timestamps",
+    attachments = "attachments",
+    stickers = "stickers",
     users = "users",
     count = "count"
 }

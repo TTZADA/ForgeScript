@@ -1,10 +1,11 @@
-import { GuildEmoji, Sticker, StickerFormatType } from "discord.js"
+import { Sticker, StickerFormatType } from "discord.js"
 import defineProperties from "../functions/defineProperties"
 
 export enum StickerProperty {
-    guildID = "guildID",
-    name = "name",
     id = "id",
+    name = "name",
+    guildID = "guildID",
+    authorID = "authorID",
     timestamp = "timestamp",
     url = "url",
     format = "format",
@@ -17,6 +18,7 @@ export enum StickerProperty {
 
 export const StickerProperties = defineProperties<typeof StickerProperty, Sticker>({
     guildID: (i) => i?.guild?.id,
+    authorID: (i) => i?.user?.id,
     id: (i) => i?.id,
     name: (i) => i?.name,
     url: (i) => i?.url,

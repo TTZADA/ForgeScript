@@ -33,7 +33,6 @@ export default new NativeFunction({
         },
     ],
     execute(ctx, [, role, color]) {
-        color ??= RoleColor.Primary
-        return this.success((role ?? ctx.role)?.colors[color])
+        return this.success((role ?? ctx.role)?.colors[color || RoleColor.Primary])
     },
 })

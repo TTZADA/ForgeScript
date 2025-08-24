@@ -17,6 +17,11 @@ var UserProperty;
     UserProperty["banner"] = "banner";
     UserProperty["timestamp"] = "timestamp";
     UserProperty["dmChannelID"] = "dmChannelID";
+    UserProperty["avatarDecoration"] = "avatarDecoration";
+    UserProperty["primaryGuildTag"] = "primaryGuildTag";
+    UserProperty["primaryGuildBadge"] = "primaryGuildBadge";
+    UserProperty["primaryGuildEnabled"] = "primaryGuildEnabled";
+    UserProperty["primaryGuildID"] = "primaryGuildID";
 })(UserProperty || (exports.UserProperty = UserProperty = {}));
 exports.UserProperties = (0, defineProperties_1.default)({
     id: (i) => i?.id,
@@ -29,5 +34,10 @@ exports.UserProperties = (0, defineProperties_1.default)({
     accentColor: (i) => i?.hexAccentColor,
     timestamp: (i) => i?.createdTimestamp,
     dmChannelID: (i) => i?.dmChannel?.id,
+    avatarDecoration: (i) => i?.avatarDecorationURL(),
+    primaryGuildTag: (i) => i?.primaryGuild?.tag,
+    primaryGuildBadge: (i) => i?.guildTagBadgeURL(),
+    primaryGuildEnabled: (i) => i?.primaryGuild?.identityEnabled,
+    primaryGuildID: (i) => i?.primaryGuild?.identityGuildId
 });
 //# sourceMappingURL=user.js.map
